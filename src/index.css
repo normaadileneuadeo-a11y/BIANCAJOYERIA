@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Cormorant Garamond", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-script: "Great Vibes", cursive;
+}
+
+:root {
+  --primary-pink: #bf528c;
+  --primary-dark: #3e263a;
+  --accent-gold: #b38944;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #faf5f8;
+  color: #382835;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.font-serif-luxury {
+  font-family: var(--font-serif);
+}
+
+.font-script-luxury {
+  font-family: var(--font-script);
+}
+
+@keyframes shimmer-gold {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.gold-gradient-text {
+  background: linear-gradient(135deg, #b58a42 0%, #e6cb89 50%, #9e752e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-pink-text {
+  background: linear-gradient(135deg, #a4487b 0%, #c46093 50%, #893363 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

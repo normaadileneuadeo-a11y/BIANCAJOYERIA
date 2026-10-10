@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Una pieza de joyería del catálogo de Bianca Atondo Joyería.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador único de la pieza"
+        },
+        "name": {
+          "type": "string",
+          "description": "Nombre de la joya",
+          "maxLength": 160
+        },
+        "category": {
+          "type": "string",
+          "description": "Categoría de la joya (Collares, Anillos, Pulseras, Aretes)",
+          "maxLength": 60
+        },
+        "price": {
+          "type": "number",
+          "description": "Precio en pesos mexicanos (MXN)"
+        },
+        "desc": {
+          "type": "string",
+          "description": "Descripción de la pieza",
+          "maxLength": 1000
+        },
+        "material": {
+          "type": "string",
+          "description": "Materiales y acabados de la joya",
+          "maxLength": 300
+        },
+        "tag": {
+          "type": "string",
+          "description": "Distintivo o etiqueta (Nuevo, Favorito, Clásico, etc.)",
+          "maxLength": 50
+        },
+        "img": {
+          "type": "string",
+          "description": "URL o imagen con marca de agua oficial"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Fecha de creación ISO o timestamp"
+        }
+      },
+      "required": ["name", "category", "img"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Colección de productos visibles públicamente para cualquier cliente en cualquier parte del mundo."
+    }
+  }
+}

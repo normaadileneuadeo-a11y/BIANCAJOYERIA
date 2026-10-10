@@ -1,0 +1,8 @@
+{
+  "name": "Bianca Atondo Joyería",
+  "description": "Catálogo exclusivo de joyería fina Bianca Atondo Peñuelas con cotización personalizada y pedidos por WhatsApp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
