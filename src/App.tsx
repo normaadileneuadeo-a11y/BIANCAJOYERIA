@@ -24,6 +24,7 @@ import {
   Gem,
   ArrowLeft,
   Copy,
+  Lock,
   SlidersHorizontal,
 } from 'lucide-react';
 
@@ -43,8 +44,21 @@ import {
   deleteProductFromCloud,
   resetCloudProductsToDefaults,
 } from './services/productsService';
-
-const WHATSAPP_NUMBER = '526871349604';
+import {
+  CategoryItem,
+  DEFAULT_CATEGORIES,
+  subscribeToCategories,
+  saveCategoryToCloud,
+  updateCategoryNameInCloud,
+  deleteCategoryFromCloud,
+} from './services/categoriesService';
+import {
+  buildExactWhatsAppMessage,
+  saveOrderToCloud,
+  generateOrderFolio,
+  OrderItem,
+  WHATSAPP_NUMBER,
+} from './services/ordersService';
 
 const INITIAL_PRODUCTS: Product[] = [
   {
@@ -231,10 +245,15 @@ export default function App() {
     return INITIAL_PRODUCTS;
   });
 
-  // Form states in cart
+  // Custom Categories state (persisted in Firestore)
+  const [categories, setCategories] = useState<CategoryItem[]>(DEFAULT_CATEGORIES);
+
+  // Form states in cart for exact WhatsApp order
   const [customerName, setCustomerName] = useState('');
-  const [deliveryMethod, setDeliveryMethod] = useState('Quiero consultar entrega');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [deliveryMethod, setDeliveryMethod] = useState('Consultar envío a domicilio');
   const [orderNotes, setOrderNotes] = useState('');
+  const [showOrderPreview, setShowOrderPreview] = useState(false);
 
   useEffect(() => {
     triggerHaptic([30, 20]);
@@ -242,11 +261,18 @@ export default function App() {
     setGlitterTrigger((prev) => prev + 1);
 
     // Real-time synchronization from Cloud Firestore
-    const unsubscribe = subscribeToProducts(INITIAL_PRODUCTS, (updated) => {
+    const unsubscribeProducts = subscribeToProducts(INITIAL_PRODUCTS, (updated) => {
       setProducts(updated);
     });
 
-    return () => unsubscribe();
+    const unsubscribeCategories = subscribeToCategories(DEFAULT_CATEGORIES, (updatedCategories) => {
+      setCategories(updatedCategories);
+    });
+
+    return () => {
+      unsubscribeProducts();
+      unsubscribeCategories();
+    };
   }, []);
 
   const handleSaveProductCloud = async (prod: Product) => {
@@ -262,6 +288,26 @@ export default function App() {
   const handleResetDefaultsCloud = async () => {
     await resetCloudProductsToDefaults(INITIAL_PRODUCTS);
     showToast('Colección original restablecida en la nube ✨');
+  };
+
+  const handleSaveCategoryCloud = async (cat: { id?: string; name: string; description?: string }) => {
+    await saveCategoryToCloud(cat);
+    showToast(`Categoría "${cat.name}" guardada en la nube ✨`);
+  };
+
+  const handleUpdateCategoryCloud = async (
+    id: string,
+    oldName: string,
+    newName: string,
+    newDesc?: string
+  ) => {
+    await updateCategoryNameInCloud(id, oldName, newName, newDesc);
+    showToast(`Categoría "${newName}" actualizada en la nube ✨`);
+  };
+
+  const handleDeleteCategoryCloud = async (id: string) => {
+    await deleteCategoryFromCloud(id);
+    showToast('Categoría eliminada de la nube 🗑️');
   };
 
   const showToast = (msg: string) => {
@@ -334,7 +380,7 @@ export default function App() {
       const matchesCategory =
         selectedCategory === 'Todos' ||
         (selectedCategory === 'Para regalar' && (item.tag === 'Regalo' || item.tag === 'Favorito')) ||
-        item.category === selectedCategory;
+        item.category.trim().toLowerCase() === selectedCategory.trim().toLowerCase();
 
       const matchesSearch =
         !term ||
@@ -347,7 +393,7 @@ export default function App() {
     });
   }, [selectedCategory, searchQuery, products]);
 
-  const handleCategoryCardClick = (cat: 'Collares' | 'Anillos' | 'Pulseras' | 'Aretes') => {
+  const handleCategoryCardClick = (cat: string) => {
     setSelectedCategory(cat);
     setActiveTab('catalogo');
     playLuxuryChime();
@@ -355,30 +401,113 @@ export default function App() {
     showToast(`Mostrando colección de ${cat} ✨`);
   };
 
-  const handleSendOrder = () => {
-    const itemIds = Object.keys(cart)
+  const currentCartOrderItems: OrderItem[] = useMemo(() => {
+    return Object.keys(cart)
       .map(Number)
-      .filter((id) => (cart[id] || 0) > 0);
+      .filter((id) => (cart[id] || 0) > 0)
+      .map((id) => {
+        const prod = products.find((p) => p.id === id);
+        const qty = cart[id] || 1;
+        const price = prod?.price;
+        const subtotal = price ? price * qty : undefined;
+        return {
+          id,
+          name: prod?.name || 'Joya',
+          category: prod?.category || 'Joyería',
+          material: prod?.material || 'Chapa de oro 14k',
+          tag: prod?.tag || 'Exclusivo',
+          price,
+          qty,
+          subtotal,
+          img: prod?.img,
+        };
+      });
+  }, [cart, products]);
 
-    if (itemIds.length === 0) {
+  const handleSendOrder = () => {
+    if (currentCartOrderItems.length === 0) {
       showToast('Selecciona al menos una joya primero');
       return;
     }
 
-    const itemsList = itemIds
-      .map((id) => {
-        const prod = products.find((p) => p.id === id);
-        const priceStr = prod?.price ? `— $${prod.price} MXN c/u` : '— Precio por confirmar';
-        return `• ${prod?.name || 'Joya'} (${prod?.category}) — Cantidad: ${cart[id]} ${priceStr}`;
-      })
-      .join('\n');
+    const folio = generateOrderFolio();
 
-    const totalText = estimatedTotal > 0 ? `\n💰 Total estimado: $${estimatedTotal.toLocaleString('es-MX')} MXN` : '';
+    const message = buildExactWhatsAppMessage({
+      folio,
+      customerName,
+      customerPhone,
+      deliveryMethod,
+      orderNotes,
+      items: currentCartOrderItems,
+      totalItems: totalCartCount,
+      totalAmount: estimatedTotal,
+    });
 
-    const message = `Hola Bianca ✨ Vi su catálogo digital y quiero consultar disponibilidad para:\n\n${itemsList}${totalText}\n\n👤 Mi nombre: ${customerName.trim() || 'No especificado'}\n📦 Entrega: ${deliveryMethod}\n📝 Nota: ${orderNotes.trim() || 'Ninguna'}\n\n¿Me podrías confirmar existencias y coordinar la compra, por favor?`;
+    // Save cloud backup in Firestore
+    saveOrderToCloud({
+      folio,
+      customerName: customerName.trim() || 'Cliente de Catálogo Digital',
+      customerPhone,
+      deliveryMethod,
+      orderNotes,
+      items: currentCartOrderItems,
+      totalItems: totalCartCount,
+      totalAmount: estimatedTotal,
+      createdAt: new Date().toISOString(),
+      status: 'pendiente',
+    });
+
+    playLuxuryChime();
+    triggerHaptic([30, 40, 20]);
+    showToast(`¡Pedido #${folio} preparado con éxito! Abriendo WhatsApp 💬`);
 
     const encoded = encodeURIComponent(message);
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encoded}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleOrderSingleProduct = (prod: Product) => {
+    const folio = generateOrderFolio();
+    const item: OrderItem = {
+      id: prod.id,
+      name: prod.name,
+      category: prod.category,
+      material: prod.material,
+      tag: prod.tag,
+      price: prod.price,
+      qty: 1,
+      subtotal: prod.price,
+      img: prod.img,
+    };
+
+    const message = buildExactWhatsAppMessage({
+      folio,
+      customerName: customerName.trim() || 'Cliente de Catálogo Digital',
+      customerPhone,
+      deliveryMethod: 'Quiero coordinar entrega directa',
+      orderNotes: `Interés directo en comprar la pieza "${prod.name}"`,
+      items: [item],
+      totalItems: 1,
+      totalAmount: prod.price || 0,
+    });
+
+    saveOrderToCloud({
+      folio,
+      customerName: customerName.trim() || 'Cliente de Catálogo Digital',
+      customerPhone,
+      deliveryMethod: 'Quiero coordinar entrega directa',
+      orderNotes: `Interés directo en comprar la pieza "${prod.name}"`,
+      items: [item],
+      totalItems: 1,
+      totalAmount: prod.price || 0,
+      createdAt: new Date().toISOString(),
+      status: 'pendiente',
+    });
+
+    playLuxuryChime();
+    triggerHaptic([20, 30]);
+    showToast(`¡Pedido #${folio} de "${prod.name}" listo! Abriendo WhatsApp ✨`);
+
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleDirectWhatsApp = () => {
@@ -496,13 +625,13 @@ END:VCARD`;
 
           {/* Quick Actions (Cargar Joya, QR, Compartir, Selección) */}
           <div className="flex items-center gap-2">
-            {/* Admin trigger button: Subir Joyas con Marca de Agua */}
+            {/* Admin trigger button: Subir Joyas con Marca de Agua (Protegido por PIN) */}
             <button
               onClick={() => setIsAdminOpen(true)}
-              className="px-2.5 py-1.5 rounded-full bg-white border border-[#eed7e6] text-[#863760] text-xs font-semibold hover:bg-[#faedf4] transition-colors inline-flex items-center gap-1 shadow-2xs active:scale-95"
-              title="Cargar productos reales con precio y marca de agua oficial"
+              className="px-2.5 py-1.5 rounded-full bg-white border border-[#eed7e6] text-[#863760] text-xs font-semibold hover:bg-[#faedf4] transition-colors inline-flex items-center gap-1.5 shadow-2xs active:scale-95"
+              title="Administrar catálogo (Requiere PIN 19923006)"
             >
-              <Plus className="w-3.5 h-3.5 text-[#ba5489]" />
+              <Lock className="w-3 h-3 text-[#ba5489]" />
               <span className="hidden sm:inline">Cargar Joya</span>
             </button>
 
@@ -667,6 +796,34 @@ END:VCARD`;
                     </button>
                   ))}
                 </div>
+
+                {/* More custom categories quick chips on home */}
+                {categories.filter(
+                  (c) => !['collares', 'anillos', 'pulseras', 'aretes'].includes(c.id.toLowerCase())
+                ).length > 0 && (
+                  <div className="p-3 bg-white rounded-2xl border border-[#eed7e5] space-y-2 shadow-2xs">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-[#a04e79] block">
+                      Nuevas Colecciones y Categorías:
+                    </span>
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                      {categories
+                        .filter(
+                          (c) =>
+                            !['collares', 'anillos', 'pulseras', 'aretes'].includes(c.id.toLowerCase())
+                        )
+                        .map((c) => (
+                          <button
+                            key={c.id}
+                            onClick={() => handleCategoryCardClick(c.name)}
+                            className="px-3 py-1.5 rounded-full bg-[#fdf5f9] border border-[#ecd0e1] text-xs font-semibold text-[#8b3b68] hover:bg-[#faedf4] whitespace-nowrap shadow-2xs transition-colors flex items-center gap-1"
+                          >
+                            <span>✨</span>
+                            <span>{c.name}</span>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Romantic Quote */}
@@ -839,9 +996,10 @@ END:VCARD`;
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setIsAdminOpen(true)}
-                    className="px-2.5 py-1.5 rounded-xl bg-[#faedf4] text-[#ba5489] border border-[#f0d0e3] text-xs font-semibold hover:bg-[#ba5489] hover:text-white transition-colors inline-flex items-center gap-1"
+                    className="px-2.5 py-1.5 rounded-xl bg-[#faedf4] text-[#ba5489] border border-[#f0d0e3] text-xs font-semibold hover:bg-[#ba5489] hover:text-white transition-colors inline-flex items-center gap-1.5"
+                    title="Administrar catálogo con PIN (19923006)"
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Lock className="w-3 h-3" />
                     <span>Cargar Joya</span>
                   </button>
                 </div>
@@ -869,8 +1027,8 @@ END:VCARD`;
 
               {/* Filter Pills */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                {['Todos', 'Collares', 'Anillos', 'Pulseras', 'Aretes', 'Para regalar'].map((cat) => {
-                  const isActive = selectedCategory === cat;
+                {['Todos', ...categories.map((c) => c.name), 'Para regalar'].map((cat) => {
+                  const isActive = selectedCategory.toLowerCase() === cat.toLowerCase();
                   return (
                     <button
                       key={cat}
@@ -1160,110 +1318,179 @@ END:VCARD`;
               ) : (
                 <>
                   <div className="space-y-2.5">
-                    {Object.keys(cart)
-                      .map(Number)
-                      .filter((id) => (cart[id] || 0) > 0)
-                      .map((id) => {
-                        const product = products.find((p) => p.id === id);
-                        if (!product) return null;
-                        const qty = cart[id];
+                    {currentCartOrderItems.map((item) => {
+                      const subtotalFormatted = item.subtotal
+                        ? `$${item.subtotal.toLocaleString('es-MX')} MXN`
+                        : 'A cotizar';
 
-                        return (
-                          <div
-                            key={id}
-                            className="p-2.5 bg-white rounded-xl border border-[#f2dfec] flex items-center justify-between gap-2.5 shadow-2xs"
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <img
-                                src={product.img}
-                                alt={product.name}
-                                className="w-10 h-10 rounded-lg object-cover shrink-0 bg-[#f7edf3]"
-                              />
-                              <div className="truncate">
-                                <h4 className="text-xs font-semibold text-[#3b2739] truncate">
-                                  {product.name}
-                                </h4>
-                                <span className="text-[10px] text-[#91798d] block">
-                                  {product.price ? `$${product.price} MXN c/u` : 'Precio a confirmar'}
+                      return (
+                        <div
+                          key={item.id}
+                          className="p-3 bg-white rounded-2xl border border-[#f2dfec] flex items-center justify-between gap-3 shadow-2xs hover:border-[#e7c7dc] transition-colors"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <img
+                              src={item.img}
+                              alt={item.name}
+                              className="w-12 h-12 rounded-xl object-cover shrink-0 bg-[#f7edf3] border border-[#f0dce8]"
+                            />
+                            <div className="truncate">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[9px] uppercase font-bold text-[#ba5489] bg-[#fdf2f8] px-1.5 py-0.5 rounded-md border border-[#f9dbe9]">
+                                  {item.category}
+                                </span>
+                                <span className="text-[9px] text-[#93788f]">
+                                  {item.tag}
                                 </span>
                               </div>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 shrink-0 bg-[#faf2f7] px-2 py-0.5 rounded-full border border-[#f0dde9]">
-                              <button
-                                onClick={() => updateQuantity(id, -1)}
-                                className="w-5 h-5 rounded-full bg-white text-[#7d5f77] flex items-center justify-center shadow-xs"
-                              >
-                                <Minus className="w-2.5 h-2.5" />
-                              </button>
-                              <span className="text-xs font-bold text-[#3d283b] w-4 text-center">
-                                {qty}
-                              </span>
-                              <button
-                                onClick={() => updateQuantity(id, 1)}
-                                className="w-5 h-5 rounded-full bg-white text-[#7d5f77] flex items-center justify-center shadow-xs"
-                              >
-                                <Plus className="w-2.5 h-2.5" />
-                              </button>
+                              <h4 className="text-xs font-bold text-[#3b2739] truncate mt-0.5">
+                                {item.name}
+                              </h4>
+                              <div className="text-[11px] text-[#84677f] flex items-center gap-1 mt-0.5">
+                                <span>{item.price ? `$${item.price} c/u` : 'Precio a confirmar'}</span>
+                                <span>·</span>
+                                <span className="font-bold text-[#b58a42]">Subtotal: {subtotalFormatted}</span>
+                              </div>
                             </div>
                           </div>
-                        );
-                      })}
+
+                          <div className="flex items-center gap-1.5 shrink-0 bg-[#faf2f7] px-2 py-1 rounded-full border border-[#f0dde9]">
+                            <button
+                              onClick={() => updateQuantity(item.id, -1)}
+                              className="w-5 h-5 rounded-full bg-white text-[#7d5f77] flex items-center justify-center shadow-xs hover:bg-[#faedf4]"
+                              title="Disminuir cantidad"
+                            >
+                              <Minus className="w-2.5 h-2.5" />
+                            </button>
+                            <span className="text-xs font-bold text-[#3d283b] w-4 text-center">
+                              {item.qty}
+                            </span>
+                            <button
+                              onClick={() => updateQuantity(item.id, 1)}
+                              className="w-5 h-5 rounded-full bg-white text-[#7d5f77] flex items-center justify-center shadow-xs hover:bg-[#faedf4]"
+                              title="Aumentar cantidad"
+                            >
+                              <Plus className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  {/* Estimated total if prices exist */}
-                  {estimatedTotal > 0 && (
-                    <div className="p-3 bg-[#fdf5f9] rounded-xl border border-[#eed2e2] flex items-center justify-between text-xs">
-                      <span className="font-semibold text-[#5d3b55]">Total estimado:</span>
-                      <span className="font-bold text-[#b58a42] text-sm">${estimatedTotal.toLocaleString('es-MX')} MXN</span>
+                  {/* Exact Total Breakdown */}
+                  <div className="p-3.5 bg-gradient-to-br from-[#fdf5f9] to-[#faf0f6] rounded-2xl border border-[#eed2e2] space-y-2">
+                    <div className="flex items-center justify-between text-xs text-[#715c6f]">
+                      <span>Piezas solicitadas:</span>
+                      <span className="font-semibold font-mono text-[#3e273b]">
+                        {totalCartCount} {totalCartCount === 1 ? 'artículo' : 'artículos'}
+                      </span>
                     </div>
-                  )}
+                    <div className="flex items-center justify-between pt-1 border-t border-[#f0d8e6] text-xs">
+                      <span className="font-bold text-[#442c41] uppercase tracking-wider text-[11px]">
+                        Total Exacto a Pagar:
+                      </span>
+                      <span className="font-bold text-[#b58a42] text-base">
+                        ${estimatedTotal.toLocaleString('es-MX')} MXN
+                      </span>
+                    </div>
+                  </div>
 
                   {/* Customer Information for WhatsApp Quote */}
-                  <div className="space-y-2.5 pt-3 border-t border-[#f2dfec]">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-[#986a8b] block">
-                      Tus Datos de Consulta
-                    </span>
+                  <div className="space-y-3 pt-3 border-t border-[#f2dfec]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#98537b] flex items-center gap-1.5">
+                        <Check className="w-3.5 h-3.5 text-[#ba5489]" />
+                        <span>Datos para tu Pedido Oficial</span>
+                      </span>
+                      <span className="text-[10px] text-[#16a34a] font-semibold bg-[#dcfce7] px-2 py-0.5 rounded-full border border-[#bbf7d0]">
+                        WhatsApp Oficial
+                      </span>
+                    </div>
 
-                    <div>
-                      <label className="text-[10px] text-[#796276] block mb-0.5">
-                        Tu nombre (opcional)
-                      </label>
-                      <input
-                        type="text"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="Ej. Sofía Hernández"
-                        className="w-full px-3 py-2 bg-white border border-[#edd7e6] rounded-xl text-xs text-[#392437] focus:outline-none focus:border-[#ba5489]"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="text-[10px] font-semibold text-[#573d52] block mb-1">
+                          Tu nombre completo *
+                        </label>
+                        <input
+                          type="text"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          placeholder="Ej. Sofía Hernández"
+                          className="w-full px-3 py-2 bg-white border border-[#edd7e6] rounded-xl text-xs text-[#392437] focus:outline-none focus:border-[#ba5489]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-semibold text-[#573d52] block mb-1">
+                          Teléfono de contacto (opcional)
+                        </label>
+                        <input
+                          type="tel"
+                          value={customerPhone}
+                          onChange={(e) => setCustomerPhone(e.target.value)}
+                          placeholder="Ej. 687 123 4567"
+                          className="w-full px-3 py-2 bg-white border border-[#edd7e6] rounded-xl text-xs text-[#392437] focus:outline-none focus:border-[#ba5489]"
+                        />
+                      </div>
                     </div>
 
                     <div>
-                      <label className="text-[10px] text-[#796276] block mb-0.5">
-                        Preferencia de entrega
+                      <label className="text-[10px] font-semibold text-[#573d52] block mb-1">
+                        Modalidad de entrega
                       </label>
                       <select
                         value={deliveryMethod}
                         onChange={(e) => setDeliveryMethod(e.target.value)}
                         className="w-full px-3 py-2 bg-white border border-[#edd7e6] rounded-xl text-xs text-[#392437] focus:outline-none focus:border-[#ba5489]"
                       >
-                        <option value="Quiero consultar entrega">Quiero consultar entrega</option>
-                        <option value="Recoger en punto de entrega">Recoger en punto de entrega</option>
-                        <option value="Consultar envío a domicilio">Consultar envío a domicilio</option>
+                        <option value="Envío a domicilio">Envío a domicilio</option>
+                        <option value="Recoger en punto de entrega local">Recoger en punto de entrega local</option>
+                        <option value="Entrega personalizada">Entrega personalizada</option>
+                        <option value="Para regalo (incluir empaque especial de terciopelo y dedicatoria)">Para regalo (incluir empaque especial y dedicatoria)</option>
+                        <option value="Quiero consultar disponibilidad primero">Quiero consultar disponibilidad primero</option>
                       </select>
                     </div>
 
                     <div>
-                      <label className="text-[10px] text-[#796276] block mb-0.5">
-                        Nota (talla, dedicatoria o color)
+                      <label className="text-[10px] font-semibold text-[#573d52] block mb-1">
+                        Especificaciones (talla de anillo, dedicatoria o dudas)
                       </label>
                       <textarea
                         rows={2}
                         value={orderNotes}
                         onChange={(e) => setOrderNotes(e.target.value)}
-                        placeholder="Ej. ¿Tienen disponible para entrega esta semana?"
+                        placeholder="Ej. Talla 7 para los anillos, o dedicatoria para tarjeta de regalo."
                         className="w-full px-3 py-2 bg-white border border-[#edd7e6] rounded-xl text-xs text-[#392437] focus:outline-none focus:border-[#ba5489]"
                       />
+                    </div>
+
+                    {/* WhatsApp Message Preview Toggle */}
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowOrderPreview(!showOrderPreview)}
+                        className="text-[11px] text-[#ba5489] hover:underline flex items-center gap-1 font-semibold"
+                      >
+                        <span>{showOrderPreview ? 'Ocultar vista previa del mensaje' : 'Ver formato exacto del pedido para WhatsApp'}</span>
+                        <span className="text-[10px]">{showOrderPreview ? '▲' : '▼'}</span>
+                      </button>
+
+                      {showOrderPreview && (
+                        <div className="mt-2 p-3 bg-white rounded-xl border border-[#ecd2e1] text-[11px] font-mono text-[#432d40] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto shadow-inner bg-[#fffdfd]">
+                          {buildExactWhatsAppMessage({
+                            folio: 'BA-PREVIEW',
+                            customerName: customerName || 'Nombre del cliente',
+                            customerPhone,
+                            deliveryMethod,
+                            orderNotes,
+                            items: currentCartOrderItems,
+                            totalItems: totalCartCount,
+                            totalAmount: estimatedTotal,
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </>
@@ -1271,14 +1498,17 @@ END:VCARD`;
             </div>
 
             {totalCartCount > 0 && (
-              <div className="p-4 bg-white border-t border-[#f1dce8]">
+              <div className="p-4 bg-white border-t border-[#f1dce8] space-y-2">
                 <button
                   onClick={handleSendOrder}
-                  className="w-full py-3.5 rounded-2xl bg-[#9e3a6a] hover:bg-[#8d325d] text-white text-xs font-semibold tracking-wider uppercase shadow-md flex items-center justify-center gap-2"
+                  className="w-full py-3.5 rounded-2xl bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold tracking-wider uppercase shadow-md flex items-center justify-center gap-2 active:scale-98 transition-all"
                 >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>Enviar selección por WhatsApp ↗</span>
+                  <MessageCircle className="w-4 h-4 fill-current" />
+                  <span>Enviar Pedido Exacto por WhatsApp ↗</span>
                 </button>
+                <p className="text-[10px] text-center text-[#856b81] leading-relaxed">
+                  Se enviará automáticamente a Bianca el folio, lista de piezas, cantidades, precios y datos de entrega.
+                </p>
               </div>
             )}
           </div>
@@ -1358,14 +1588,13 @@ END:VCARD`;
                 </button>
                 <button
                   onClick={() => {
-                    const priceNote = selectedProduct.price ? ` ($${selectedProduct.price} MXN)` : '';
-                    const msg = `Hola Bianca ✨ Vi la pieza "${selectedProduct.name}" (${selectedProduct.category})${priceNote} en su catálogo. ¿Me confirmas existencias para compra?`;
-                    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+                    handleOrderSingleProduct(selectedProduct);
+                    setSelectedProduct(null);
                   }}
-                  className="flex-1 py-2.5 rounded-xl bg-[#ba5489] text-white text-xs font-semibold hover:bg-[#a54476] transition-colors flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-xs"
                 >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  Consultar
+                  <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                  Comprar por WhatsApp ↗
                 </button>
               </div>
             </div>
@@ -1470,14 +1699,18 @@ END:VCARD`;
         </div>
       )}
 
-      {/* MODAL 5: ADMIN PRODUCT MANAGER (Upload real products with watermark and prices to Cloud) */}
+      {/* MODAL 5: ADMIN PRODUCT MANAGER (Upload real products with watermark, prices & custom categories to Cloud) */}
       <AdminProductManager
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
         products={products}
+        categories={categories}
         onSaveProduct={handleSaveProductCloud}
         onDeleteProduct={handleDeleteProductCloud}
         onResetDefaults={handleResetDefaultsCloud}
+        onSaveCategory={handleSaveCategoryCloud}
+        onUpdateCategory={handleUpdateCategoryCloud}
+        onDeleteCategory={handleDeleteCategoryCloud}
       />
 
       {/* TOAST SYSTEM */}

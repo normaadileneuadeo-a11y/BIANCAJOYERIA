@@ -16,7 +16,7 @@
         },
         "category": {
           "type": "string",
-          "description": "Categoría de la joya (Collares, Anillos, Pulseras, Aretes)",
+          "description": "Categoría de la joya (Collares, Anillos, Pulseras, Aretes u otra personalizada)",
           "maxLength": 60
         },
         "price": {
@@ -48,12 +48,106 @@
         }
       },
       "required": ["name", "category", "img"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Categoría personalizada para organizar las joyas del catálogo de Bianca Atondo Joyería sin tocar código.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador único o slug de la categoría"
+        },
+        "name": {
+          "type": "string",
+          "description": "Nombre visible de la categoría",
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "description": "Descripción breve opcional de la categoría",
+          "maxLength": 200
+        },
+        "order": {
+          "type": "number",
+          "description": "Orden opcional de visualización en el catálogo"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Fecha de creación ISO"
+        }
+      },
+      "required": ["id", "name"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Registro de pedido exacto generado por un cliente para coordinar por WhatsApp.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID del pedido"
+        },
+        "folio": {
+          "type": "string",
+          "description": "Folio legible de compra (ej. #BA-72941)"
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Nombre del cliente o clienta",
+          "maxLength": 120
+        },
+        "customerPhone": {
+          "type": "string",
+          "description": "Teléfono de contacto opcional",
+          "maxLength": 40
+        },
+        "deliveryMethod": {
+          "type": "string",
+          "description": "Método de entrega seleccionado",
+          "maxLength": 100
+        },
+        "orderNotes": {
+          "type": "string",
+          "description": "Notas especiales, dedicatoria o tallas",
+          "maxLength": 500
+        },
+        "items": {
+          "type": "array",
+          "description": "Lista exacta de joyas solicitadas con cantidad y precios"
+        },
+        "totalItems": {
+          "type": "number",
+          "description": "Cantidad total de piezas en el pedido"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Monto total acumulado en MXN"
+        },
+        "status": {
+          "type": "string",
+          "description": "Estado del pedido (pendiente, confirmado)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Marca de tiempo del pedido"
+        }
+      },
+      "required": ["folio", "items", "totalItems"]
     }
   },
   "firestore": {
     "/products/{productId}": {
       "schema": "Product",
       "description": "Colección de productos visibles públicamente para cualquier cliente en cualquier parte del mundo."
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Colección de categorías personalizadas creadas y gestionadas por los administradores."
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Colección de pedidos generados para seguimiento por WhatsApp y respaldo en la nube."
     }
   }
 }
