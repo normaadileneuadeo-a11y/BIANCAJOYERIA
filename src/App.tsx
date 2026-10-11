@@ -26,6 +26,8 @@ import {
   Copy,
   Lock,
   SlidersHorizontal,
+  Instagram,
+  Sparkle,
 } from 'lucide-react';
 
 import heroImg from './assets/images/hero_jewelry_showcase_1791672703497.jpg';
@@ -35,6 +37,8 @@ import pulseraImg from './assets/images/product_pulsera_eslabones_1791672752809.
 import aretesImg from './assets/images/product_aretes_delicados_1791672761293.jpg';
 import packagingImg from './assets/images/packaging_box_unboxing_1791673252742.jpg';
 import nfcStandImg from './assets/images/nfc_stand_display_1791673274611.jpg';
+import nfcModelNeckImg from './assets/images/nfc_model_neck_1791678965592.jpg';
+import nfcBottomJewelryImg from './assets/images/nfc_bottom_jewelry_1791678981253.jpg';
 import { PinkGlitterCanvas } from './components/PinkGlitterCanvas';
 import { RealQRCode } from './components/RealQRCode';
 import { AdminProductManager, Product } from './components/AdminProductManager';
@@ -226,6 +230,7 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showQRModal, setShowQRModal] = useState(false);
   const [showNFCStandModal, setShowNFCStandModal] = useState(false);
+  const [showStoryModal, setShowStoryModal] = useState(false);
   const [topBannerVisible, setTopBannerVisible] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [glitterTrigger, setGlitterTrigger] = useState<number>(1);
@@ -670,313 +675,271 @@ END:VCARD`;
 
         {/* Content Area */}
         <main className="flex-1 pb-28 px-4 pt-4 space-y-6">
-          {/* TAB 1: NFC HOME - The Exact Mobile Screen */}
+          {/* TAB 1: NFC HOME - The Exact Mobile Screen matching NFC Tap reference */}
           {activeTab === 'nfc-home' && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Brand Centerpiece / Emblem */}
-              <div className="text-center pt-2 pb-1 relative">
-                <button
-                  type="button"
-                  onClick={triggerSparkles}
-                  className="relative w-28 h-28 mx-auto flex items-center justify-center cursor-pointer active:scale-95 transition-transform group"
-                  title="Toca el monograma para activar brillantinas rosas ✨"
-                  aria-label="Toca el monograma para activar brillantinas rosas"
-                >
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#fadfe9] via-[#f5e3fc] to-[#fce4ee] opacity-70 blur-md group-hover:opacity-100 transition-opacity" />
-                  
-                  {/* Orbiting Ring Ellipse */}
-                  <div className="absolute w-24 h-12 rounded-[50%] border-[2px] border-[#cbb3d9] rotate-[-25deg] pointer-events-none group-hover:rotate-[-20deg] transition-transform" />
-                  <div className="absolute w-24 h-12 rounded-[50%] border-[1.5px] border-[#dfb672] rotate-[-25deg] translate-x-0.5 translate-y-0.5 pointer-events-none" />
+            <div className="relative -mx-4 -mt-4 px-4 pt-4 pb-6 overflow-hidden animate-fade-in bg-gradient-to-b from-[#fef5f9] via-[#fdf2f7] to-[#faedf4]">
+              {/* Soft decorative background accents */}
+              <div className="absolute top-0 left-0 w-44 h-44 rounded-full bg-gradient-to-br from-[#f8d7e9] via-[#ecd8f3] to-transparent opacity-60 blur-2xl pointer-events-none" />
+              <div className="absolute top-80 right-0 w-60 h-60 rounded-full bg-gradient-to-tl from-[#fce2ee] via-[#f7d9ec] to-transparent opacity-70 blur-3xl pointer-events-none" />
 
-                  {/* Sparkle Star ✦ */}
-                  <div className="absolute top-2 right-3 text-[#d19c3c] animate-pulse">
-                    <Sparkles className="w-5 h-5 fill-[#ecc577]" />
-                  </div>
-
-                  {/* Small Heart ♡ */}
-                  <div className="absolute bottom-4 right-4 text-[#ba5489]">
-                    <Heart className="w-4 h-4 fill-[#e59fc4] text-[#ba5489]" />
-                  </div>
-
-                  {/* Golden 'B' Monogram */}
-                  <div className="relative z-10 font-serif-luxury text-6xl font-bold tracking-tight text-[#b58a42] drop-shadow-sm select-none">
-                    <span className="gold-gradient-text">B</span>
-                  </div>
-                </button>
-
-                {/* Brand Name Typography */}
-                <div className="mt-1 space-y-0.5">
-                  <h1 className="font-serif-luxury text-2xl sm:text-3xl tracking-[0.22em] font-semibold text-[#8b3b68] uppercase">
-                    BIANCA
-                  </h1>
-                  <p className="font-script-luxury text-3xl sm:text-4xl text-[#5e3a57] -mt-1 font-normal">
-                    Atondo Peñuelas
-                  </p>
-                  <div className="flex items-center justify-center gap-1.5 text-[10px] tracking-[0.3em] font-semibold text-[#ba5489] uppercase mt-0.5">
-                    <span>♡</span>
-                    <span>JOYERÍA</span>
-                    <span>♡</span>
-                  </div>
-                  <p className="text-xs text-[#826a7e] font-serif-luxury italic mt-1.5">
-                    Detalles que hacen brillar tu historia ♡
-                  </p>
+              {/* Top Section: Monogram Logo & Right Jewelry Model Photo */}
+              <div className="relative pt-2 pb-3">
+                {/* Dainty hearts & gold sparkles in background */}
+                <div className="absolute top-2 left-6 text-[#e89dbd] opacity-75">
+                  <Heart className="w-4 h-4 fill-none stroke-current" />
                 </div>
-              </div>
+                <div className="absolute top-24 left-4 text-[#dfb26b] opacity-70 animate-pulse">
+                  <Sparkle className="w-3.5 h-3.5 fill-[#ecc577]" />
+                </div>
+                <div className="absolute top-36 left-2 text-[#e89dbd] opacity-60">
+                  <Heart className="w-3.5 h-3.5 fill-none stroke-current" />
+                </div>
+                <div className="absolute top-52 right-6 text-[#dfb26b] opacity-80">
+                  <Sparkle className="w-4 h-4 fill-[#ecc577]" />
+                </div>
+                <div className="absolute top-4 right-14 text-[#e89dbd] opacity-70">
+                  <Heart className="w-3 h-3 fill-none stroke-current" />
+                </div>
 
-              {/* Physical Stand Card Banner */}
-              <div className="p-3.5 bg-gradient-to-r from-[#fef5f9] via-[#f7eaf4] to-[#fef5f9] rounded-2xl border border-[#eed4e4] flex items-center justify-between gap-3 shadow-xs">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white border border-[#e6cadc] flex items-center justify-center text-[#ba5489] shadow-2xs shrink-0">
-                    <Gem className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-[11px] font-bold text-[#863760] block leading-tight">
-                      Catálogo Exclusivo en Tu Celular
-                    </span>
-                    <span className="text-[10px] text-[#7f667c] leading-tight block mt-0.5">
-                      Consulta existencias y cotiza directo por WhatsApp
-                    </span>
+                {/* Right Floating Model Photo (masked luxury organic cutout) */}
+                <div className="absolute -top-1 -right-4 w-40 sm:w-48 h-56 sm:h-64 pointer-events-none select-none z-0">
+                  <div className="w-full h-full relative">
+                    <img
+                      src={nfcModelNeckImg}
+                      alt="Modelo luciendo joyería fina Bianca Atondo"
+                      className="w-full h-full object-cover rounded-bl-[50px] opacity-90 drop-shadow-sm"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#fdf3f8]/40 to-[#fdf3f8]" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#fdf2f7] via-transparent to-transparent" />
                   </div>
                 </div>
-                <button
-                  onClick={() => setShowNFCStandModal(true)}
-                  className="px-2.5 py-1.5 rounded-xl bg-white border border-[#eed0e2] text-[10px] font-semibold text-[#964273] hover:bg-[#faedf4] whitespace-nowrap shadow-2xs"
-                >
-                  Ver atril ↗
-                </button>
-              </div>
 
-              {/* THE 4 CATEGORY SHOWCASE CARDS (2x2 Grid) */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-xs uppercase tracking-widest font-semibold text-[#a44c7c]">
-                    Colección Exclusiva
-                  </span>
+                {/* Brand Centerpiece Emblem & Monogram */}
+                <div className="relative z-10 text-center max-w-[270px] sm:max-w-xs mx-auto pt-2">
                   <button
-                    onClick={() => {
-                      setSelectedCategory('Todos');
-                      setActiveTab('catalogo');
-                    }}
-                    className="text-[11px] text-[#ba5489] font-medium hover:underline inline-flex items-center gap-0.5"
+                    type="button"
+                    onClick={triggerSparkles}
+                    className="relative w-24 h-24 mx-auto flex items-center justify-center cursor-pointer active:scale-95 transition-transform group"
+                    title="Toca el monograma para activar brillantinas rosas ✨"
+                    aria-label="Toca el monograma de Bianca Atondo para activar destellos"
                   >
-                    Ver todo ({products.length}) <ChevronRight className="w-3 h-3" />
+                    {/* Soft ambient glow */}
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#fadfe9] via-[#f5e3fc] to-[#fce4ee] opacity-80 blur-md group-hover:opacity-100 transition-opacity" />
+
+                    {/* Orbiting Ring Ellipse */}
+                    <div className="absolute w-20 h-10 rounded-[50%] border-[2px] border-[#cbb3d9] rotate-[-25deg] pointer-events-none group-hover:rotate-[-20deg] transition-transform" />
+                    <div className="absolute w-20 h-10 rounded-[50%] border-[1.5px] border-[#dfb672] rotate-[-25deg] translate-x-0.5 translate-y-0.5 pointer-events-none" />
+
+                    {/* Sparkle Star ✦ */}
+                    <div className="absolute top-1 right-2 text-[#d19c3c] animate-pulse">
+                      <Sparkles className="w-4 h-4 fill-[#ecc577]" />
+                    </div>
+
+                    {/* Small Heart ♡ */}
+                    <div className="absolute bottom-2 right-2 text-[#ba5489]">
+                      <Heart className="w-3.5 h-3.5 fill-[#e59fc4] text-[#ba5489]" />
+                    </div>
+
+                    {/* Golden 'B' Monogram */}
+                    <div className="relative z-10 font-serif-luxury text-6xl font-bold tracking-tight text-[#b58a42] drop-shadow-xs select-none">
+                      <span className="gold-gradient-text">B</span>
+                    </div>
                   </button>
-                </div>
 
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  {CATEGORY_TILES.map((tile) => (
-                    <button
-                      key={tile.name}
-                      onClick={() => handleCategoryCardClick(tile.category)}
-                      className="group bg-white rounded-2xl border border-[#eed7e6] overflow-hidden text-left shadow-xs hover:shadow-md hover:border-[#dfb8d2] transition-all duration-200 active:scale-[0.98] flex flex-col"
-                    >
-                      <div className="relative aspect-square w-full bg-[#faedf4] overflow-hidden">
-                        <img
-                          src={tile.img}
-                          alt={tile.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          loading="lazy"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
-
-                        {/* Watermark overlay */}
-                        <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-full bg-black/45 backdrop-blur-xs flex items-center gap-1 pointer-events-none select-none border border-white/20">
-                          <span className="w-2.5 h-2.5 rounded-full bg-white text-[#b58a42] text-[6px] font-bold font-serif-luxury flex items-center justify-center">B</span>
-                          <span className="text-[7px] tracking-wider font-semibold text-white/95 uppercase">Bianca</span>
-                        </div>
-                      </div>
-                      <div className="p-3 text-center bg-white flex flex-col items-center justify-center">
-                        <span className="font-serif-luxury text-sm sm:text-base font-semibold tracking-wider text-[#3c2539] uppercase group-hover:text-[#ba5489] transition-colors">
-                          {tile.name}
-                        </span>
-                        <span className="text-[10px] text-[#937b90] mt-0.5">
-                          {tile.subtitle}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                {/* More custom categories quick chips on home */}
-                {categories.filter(
-                  (c) => !['collares', 'anillos', 'pulseras', 'aretes'].includes(c.id.toLowerCase())
-                ).length > 0 && (
-                  <div className="p-3 bg-white rounded-2xl border border-[#eed7e5] space-y-2 shadow-2xs">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-[#a04e79] block">
-                      Nuevas Colecciones y Categorías:
-                    </span>
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                      {categories
-                        .filter(
-                          (c) =>
-                            !['collares', 'anillos', 'pulseras', 'aretes'].includes(c.id.toLowerCase())
-                        )
-                        .map((c) => (
-                          <button
-                            key={c.id}
-                            onClick={() => handleCategoryCardClick(c.name)}
-                            className="px-3 py-1.5 rounded-full bg-[#fdf5f9] border border-[#ecd0e1] text-xs font-semibold text-[#8b3b68] hover:bg-[#faedf4] whitespace-nowrap shadow-2xs transition-colors flex items-center gap-1"
-                          >
-                            <span>✨</span>
-                            <span>{c.name}</span>
-                          </button>
-                        ))}
+                  {/* Brand Typography */}
+                  <div className="mt-1 space-y-0.5">
+                    <h1 className="font-serif-luxury text-2xl sm:text-3xl tracking-[0.22em] font-semibold text-[#8b3b68] uppercase">
+                      BIANCA
+                    </h1>
+                    <p className="font-script-luxury text-3xl sm:text-4xl text-[#5e3a57] -mt-1 font-normal tracking-wide">
+                      <span className="text-4xl sm:text-5xl font-medium inline-block align-baseline">A</span>tondo Peñuelas
+                    </p>
+                    <div className="flex items-center justify-center gap-1.5 text-[9px] tracking-[0.35em] font-semibold text-[#ba5489] uppercase mt-0.5">
+                      <span className="text-[10px]">♡</span>
+                      <span>JOYERÍA</span>
+                      <span className="text-[10px]">♡</span>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
 
-              {/* Romantic Quote */}
-              <div className="text-center py-4 px-6 bg-white rounded-2xl border border-[#eed8e6] shadow-xs space-y-1">
-                <p className="font-serif-luxury italic text-[#4a2e45] text-base sm:text-lg">
-                  “Hechas para acompañar cada momento especial. ♡”
-                </p>
-                <p className="text-[10px] tracking-widest uppercase font-semibold text-[#b58a42]">
-                  Acabados en Chapa de Oro 14k & Acero Fino
-                </p>
-              </div>
-
-              {/* Direct Primary Action: Consultar por WhatsApp */}
-              <div className="space-y-2">
-                <button
-                  onClick={handleDirectWhatsApp}
-                  className="w-full py-4 px-5 rounded-2xl bg-[#9e3a6a] hover:bg-[#8d325d] text-white text-sm font-semibold tracking-wide shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2.5"
-                >
-                  <MessageCircle className="w-5 h-5 fill-current" />
-                  <span>Consultar por WhatsApp</span>
-                </button>
-                <p className="text-[10px] text-center text-[#8e768b]">
-                  Atención personalizada directa con Bianca Atondo · Envíos y entregas inmediatas
-                </p>
-              </div>
-
-              {/* 4 Brand Pillars / Trust Props */}
-              <div className="p-4 bg-white rounded-2xl border border-[#eed8e6] space-y-3">
-                <div className="text-center pb-2 border-b border-[#f6e5ef]">
-                  <span className="text-[11px] uppercase tracking-wider font-semibold text-[#8b3b68]">
-                    ¿Por qué elegir Bianca Joyería?
-                  </span>
-                  <p className="font-serif-luxury italic text-sm text-[#50374b] mt-0.5">
-                    “Más que joyería, son momentos ♡”
+                {/* Welcome Greeting Banner */}
+                <div className="relative z-10 text-center mt-5 space-y-1">
+                  <h2 className="font-serif-luxury text-2xl sm:text-3xl font-normal text-[#963c6c] tracking-wide">
+                    ¡Bienvenida!
+                  </h2>
+                  <p className="text-xs sm:text-[13px] text-[#553b51] font-medium max-w-[280px] sm:max-w-xs mx-auto leading-relaxed">
+                    Gracias por acercar tu celular.<br />
+                    Elige una opción para comenzar
                   </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div className="flex items-start gap-2.5 p-2 rounded-xl bg-[#fdf8fa]">
-                    <span className="w-7 h-7 rounded-full bg-[#fde9f2] text-[#ba5489] flex items-center justify-center shrink-0">
-                      <Gem className="w-3.5 h-3.5" />
-                    </span>
-                    <div>
-                      <span className="text-[11px] font-semibold text-[#3e273b] block leading-tight">
-                        Piezas únicas
-                      </span>
-                      <span className="text-[9px] text-[#856c82] leading-tight block mt-0.5">
-                        Detalles seleccionados
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-2.5 p-2 rounded-xl bg-[#fdf8fa]">
-                    <span className="w-7 h-7 rounded-full bg-[#fde9f2] text-[#ba5489] flex items-center justify-center shrink-0">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                    </span>
-                    <div>
-                      <span className="text-[11px] font-semibold text-[#3e273b] block leading-tight">
-                        Alta calidad
-                      </span>
-                      <span className="text-[9px] text-[#856c82] leading-tight block mt-0.5">
-                        Hipoalergénico y duradero
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-2.5 p-2 rounded-xl bg-[#fdf8fa]">
-                    <span className="w-7 h-7 rounded-full bg-[#fde9f2] text-[#ba5489] flex items-center justify-center shrink-0">
-                      <Gift className="w-3.5 h-3.5" />
-                    </span>
-                    <div>
-                      <span className="text-[11px] font-semibold text-[#3e273b] block leading-tight">
-                        Para regalar
-                      </span>
-                      <span className="text-[9px] text-[#856c82] leading-tight block mt-0.5">
-                        Empaque listo y tarjeta
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-2.5 p-2 rounded-xl bg-[#fdf8fa]">
-                    <span className="w-7 h-7 rounded-full bg-[#fde9f2] text-[#ba5489] flex items-center justify-center shrink-0">
-                      <Heart className="w-3.5 h-3.5" />
-                    </span>
-                    <div>
-                      <span className="text-[11px] font-semibold text-[#3e273b] block leading-tight">
-                        Exclusividad
-                      </span>
-                      <span className="text-[9px] text-[#856c82] leading-tight block mt-0.5">
-                        Diseños con brillo propio
-                      </span>
-                    </div>
+                  <div className="text-center pt-0.5 text-[#ba5489]">
+                    <span className="text-xs">♡</span>
                   </div>
                 </div>
               </div>
 
-              {/* Quick Contact Card Download */}
-              <div className="p-4 bg-gradient-to-br from-[#faf0f5] to-[#f4e9f7] rounded-2xl border border-[#eed0e2] flex items-center justify-between gap-3">
-                <div className="space-y-0.5">
-                  <span className="text-xs font-semibold text-[#40273c] block">
-                    Guarda nuestro contacto en tu móvil
-                  </span>
-                  <span className="text-[10px] text-[#7f667d] block">
-                    Agrega a Bianca en tu agenda con 1 solo toque
-                  </span>
-                </div>
-                <button
-                  onClick={downloadVCard}
-                  className="px-3.5 py-2 rounded-xl bg-white text-[#964273] border border-[#e6cadc] text-xs font-semibold hover:bg-[#faedf4] transition-colors inline-flex items-center gap-1.5 shrink-0 shadow-2xs"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>Guardar</span>
-                </button>
-              </div>
-
-              {/* Enseña a una amiga o amigo (Código QR) */}
-              <div className="p-4 bg-white rounded-2xl border border-[#eed0e2] shadow-xs flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-[#faedf4] text-[#ba5489] flex items-center justify-center shrink-0 border border-[#f3d9e8]">
-                    <QrCode className="w-5 h-5" />
-                  </div>
-                  <div className="truncate">
-                    <span className="text-xs font-semibold text-[#3d2439] block truncate">
-                      Enseña a una amiga o amigo
-                    </span>
-                    <span className="text-[10px] text-[#836a80] block truncate">
-                      Muestra este QR para que lo escanee con su celular
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowQRModal(true)}
-                  className="px-3.5 py-2 rounded-xl bg-[#ba5489] text-white text-xs font-semibold hover:bg-[#a84779] transition-colors inline-flex items-center gap-1.5 shrink-0 shadow-2xs active:scale-95"
-                >
-                  <QrCode className="w-3.5 h-3.5" />
-                  <span>Ver QR</span>
-                </button>
-              </div>
-
-              {/* Instagram & Social Proof */}
-              <div className="text-center py-2 space-y-2">
-                <p className="text-xs text-[#7e677c]">
-                  Síguenos en Instagram para ver nuevos lanzamientos
-                </p>
+              {/* THE 4 PILLARS / ACTION BUTTONS (Exact replica of the scanned screen) */}
+              <div className="relative z-10 space-y-3.5 max-w-md mx-auto pt-1">
+                {/* CARD 1: Entrar a Instagram */}
                 <a
                   href="https://www.instagram.com/bianca.atondo.joyeria/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#e9d1e0] text-xs font-semibold text-[#8b3b68] hover:bg-[#fcf5f9] shadow-2xs"
+                  onClick={() => triggerHaptic(15)}
+                  className="luxury-glass-card rounded-2xl p-4 flex items-center justify-between gap-3.5 transition-all duration-200 active:scale-[0.98] group"
                 >
-                  <span>@bianca.atondo.joyeria</span>
-                  <ExternalLink className="w-3 h-3 opacity-60" />
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#feda75] via-[#fa7e1e] via-[#d62976] via-[#962fbf] to-[#4f5bd5] p-0.5 shadow-sm shrink-0 flex items-center justify-center">
+                      <div className="w-full h-full rounded-[14px] bg-white flex items-center justify-center">
+                        <Instagram className="w-7 h-7 text-[#d62976]" />
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-serif-luxury text-lg sm:text-xl font-semibold text-[#541e3a] group-hover:text-[#963c6c] transition-colors leading-tight">
+                        Entrar a Instagram
+                      </h3>
+                      <p className="text-xs text-[#7c6276] leading-snug mt-0.5">
+                        Síguenos y descubre más de nuestras joyas
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-[#c98db1] group-hover:text-[#ba5489] group-hover:translate-x-0.5 transition-all shrink-0" />
                 </a>
+
+                {/* CARD 2: Contactar por WhatsApp */}
+                <button
+                  type="button"
+                  onClick={handleDirectWhatsApp}
+                  className="w-full text-left luxury-glass-card rounded-2xl p-4 flex items-center justify-between gap-3.5 transition-all duration-200 active:scale-[0.98] group"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-13 h-13 rounded-2xl bg-[#eafaf1] border border-[#a7f3d0] p-0.5 shadow-sm shrink-0 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-[#25D366] flex items-center justify-center shadow-xs">
+                        <MessageCircle className="w-6 h-6 text-white fill-white" />
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-serif-luxury text-lg sm:text-xl font-semibold text-[#541e3a] group-hover:text-[#963c6c] transition-colors leading-tight">
+                        Contactar por WhatsApp
+                      </h3>
+                      <p className="text-xs text-[#7c6276] leading-snug mt-0.5">
+                        Escríbenos directamente para preguntas y pedidos
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-[#c98db1] group-hover:text-[#ba5489] group-hover:translate-x-0.5 transition-all shrink-0" />
+                </button>
+
+                {/* CARD 3: Ver productos (Catálogo Completo) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    playLuxuryChime();
+                    triggerHaptic([20, 20]);
+                    setSelectedCategory('Todos');
+                    setActiveTab('catalogo');
+                  }}
+                  className="w-full text-left luxury-glass-card rounded-2xl p-4 flex items-center justify-between gap-3.5 transition-all duration-200 active:scale-[0.98] group"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-13 h-13 rounded-2xl bg-[#fdf5f9] border border-[#f1d3e4] p-0.5 shadow-sm shrink-0 flex items-center justify-center overflow-hidden">
+                      <img
+                        src={collarImg}
+                        alt="Collar corazón dorado"
+                        className="w-11 h-11 object-cover rounded-xl"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-serif-luxury text-lg sm:text-xl font-semibold text-[#541e3a] group-hover:text-[#963c6c] transition-colors leading-tight">
+                        Ver productos
+                      </h3>
+                      <p className="text-xs text-[#7c6276] leading-snug mt-0.5">
+                        Explora nuestro catálogo y elige tus piezas favoritas
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-[#c98db1] group-hover:text-[#ba5489] group-hover:translate-x-0.5 transition-all shrink-0" />
+                </button>
+
+                {/* CARD 4: Presentación de Bianca Atondo Joyería */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    playLuxuryChime();
+                    triggerHaptic(15);
+                    setShowStoryModal(true);
+                  }}
+                  className="w-full text-left luxury-glass-card rounded-2xl p-4 flex items-center justify-between gap-3.5 transition-all duration-200 active:scale-[0.98] group"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-13 h-13 rounded-2xl bg-[#faedf4] border border-[#ecd0e1] p-0.5 shadow-sm shrink-0 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center font-serif-luxury font-bold text-xl text-[#b58a42] shadow-2xs">
+                        B
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-serif-luxury text-lg sm:text-xl font-semibold text-[#541e3a] group-hover:text-[#963c6c] transition-colors leading-tight">
+                        Presentación de Bianca Atondo Joyería
+                      </h3>
+                      <p className="text-xs text-[#7c6276] leading-snug mt-0.5">
+                        Conoce nuestra historia, valores y compromiso
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-[#c98db1] group-hover:text-[#ba5489] group-hover:translate-x-0.5 transition-all shrink-0" />
+                </button>
+              </div>
+
+              {/* Bottom Decorative Artwork & Quote (Matching Reference) */}
+              <div className="relative pt-6 pb-4 text-center">
+                <div className="relative max-w-sm mx-auto">
+                  {/* Decorative Jewelry Banner Image */}
+                  <div className="relative w-full h-32 rounded-3xl overflow-hidden shadow-xs border border-[#eed4e4]/80">
+                    <img
+                      src={nfcBottomJewelryImg}
+                      alt="Joyería fina en satín rosa"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#fef5f9]/85 via-transparent to-transparent" />
+                  </div>
+
+                  {/* Script text over artwork */}
+                  <div className="mt-3 space-y-1">
+                    <p className="font-script-luxury text-3xl sm:text-4xl text-[#783e60] leading-none">
+                      Detalles que hacen brillar tu historia
+                    </p>
+                    <div className="flex items-center justify-center gap-3 text-[#c4779e] pt-1">
+                      <span className="w-8 h-[1px] bg-[#e6b3cb]" />
+                      <span className="text-xs">♡</span>
+                      <span className="w-8 h-[1px] bg-[#e6b3cb]" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Subtle quick tools pill under image */}
+              <div className="flex items-center justify-center gap-2 pt-1 pb-2">
+                <button
+                  onClick={() => setShowQRModal(true)}
+                  className="px-3 py-1.5 rounded-full bg-white/80 border border-[#edd5e4] text-[#863760] text-[11px] font-semibold hover:bg-white inline-flex items-center gap-1.5 shadow-2xs"
+                >
+                  <QrCode className="w-3 h-3 text-[#ba5489]" />
+                  <span>Compartir con QR</span>
+                </button>
+                <button
+                  onClick={downloadVCard}
+                  className="px-3 py-1.5 rounded-full bg-white/80 border border-[#edd5e4] text-[#863760] text-[11px] font-semibold hover:bg-white inline-flex items-center gap-1.5 shadow-2xs"
+                >
+                  <UserPlus className="w-3 h-3 text-[#ba5489]" />
+                  <span>Guardar contacto</span>
+                </button>
+              </div>
+
+              {/* Footer Copyright Strip matching image */}
+              <div className="-mx-4 -mb-6 mt-4 py-3 bg-[#e89dbd]/80 backdrop-blur-xs text-center border-t border-[#df8eaf]">
+                <div className="flex items-center justify-center gap-1.5 text-white text-[11px] font-medium tracking-wide">
+                  <Heart className="w-3 h-3 fill-white" />
+                  <span>© 2025 Bianca Atondo Joyería</span>
+                </div>
               </div>
             </div>
           )}
@@ -1694,6 +1657,129 @@ END:VCARD`;
               >
                 Entendido, explorar joyas
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4B: PRESENTACIÓN DE BIANCA ATONDO JOYERÍA (Historia, valores y compromiso) */}
+      {showStoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-xs p-4 animate-fade-in">
+          <div
+            className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl border border-[#eed7e5] max-h-[90vh] flex flex-col"
+            role="dialog"
+            aria-modal="true"
+          >
+            {/* Header with Luxury Brand Banner */}
+            <div className="relative p-5 pb-4 bg-gradient-to-br from-[#fef5f9] via-[#f9e9f3] to-[#faeaf4] border-b border-[#f1dce9] text-center">
+              <button
+                onClick={() => setShowStoryModal(false)}
+                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 text-[#7d5d76] flex items-center justify-center shadow-xs hover:bg-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="w-14 h-14 rounded-2xl bg-white border border-[#eed3e3] mx-auto flex items-center justify-center shadow-xs">
+                <span className="font-serif-luxury font-bold text-3xl gold-gradient-text">
+                  B
+                </span>
+              </div>
+
+              <h3 className="font-serif-luxury text-2xl font-semibold text-[#8b3b68] uppercase tracking-[0.2em] mt-2">
+                BIANCA
+              </h3>
+              <p className="font-script-luxury text-3xl text-[#5e3a57] -mt-1 tracking-wide">
+                <span className="text-4xl font-medium inline-block align-baseline">A</span>tondo Peñuelas
+              </p>
+              <div className="flex items-center justify-center gap-1.5 text-[9px] tracking-[0.3em] font-semibold text-[#ba5489] uppercase mt-0.5">
+                <span>♡</span>
+                <span>JOYERÍA</span>
+                <span>♡</span>
+              </div>
+            </div>
+
+            {/* Story, Values & Commitment Body */}
+            <div className="p-5 overflow-y-auto space-y-4 text-xs text-[#5f445b] leading-relaxed">
+              <div className="text-center p-3 rounded-2xl bg-[#fdf5f9] border border-[#f3d9e8]">
+                <p className="font-script-luxury text-2xl text-[#8e3a6a]">
+                  “Detalles que hacen brillar tu historia ♡”
+                </p>
+                <p className="text-[10px] text-[#785973] mt-1 font-medium">
+                  Creaciones pensadas para acompañar tus instantes más memorables.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <h4 className="font-serif-luxury text-base font-bold text-[#8b3b68] uppercase tracking-wide flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#dfb26b]" />
+                  <span>Nuestra Historia</span>
+                </h4>
+                <p className="text-[#6d5169]">
+                  Bianca Atondo Joyería nace de la pasión por transformar el brillo sutil de los metales preciosos en piezas cotidianas llenas de significado. Cada diseño es seleccionado cuidadosamente para resaltar la elegancia auténtica de quien lo porta.
+                </p>
+              </div>
+
+              <div className="space-y-2 pt-1 border-t border-[#f4e4ee]">
+                <h4 className="font-serif-luxury text-base font-bold text-[#8b3b68] uppercase tracking-wide flex items-center gap-1.5">
+                  <Heart className="w-3.5 h-3.5 text-[#ba5489]" />
+                  <span>Nuestros Valores</span>
+                </h4>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div className="p-2.5 rounded-xl bg-[#faf2f7] border border-[#f0dae8]">
+                    <strong className="text-[#863760] block font-semibold">Exclusividad</strong>
+                    <span className="text-[#7c6377]">Diseños finos y atemporales con acabados de primera.</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-[#faf2f7] border border-[#f0dae8]">
+                    <strong className="text-[#863760] block font-semibold">Calidad Real</strong>
+                    <span className="text-[#7c6377]">Chapa de oro 14k y materiales hipoalergénicos duraderos.</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-[#faf2f7] border border-[#f0dae8]">
+                    <strong className="text-[#863760] block font-semibold">Empaque Especial</strong>
+                    <span className="text-[#7c6377]">Cajas y estuches listos para regalar o autoregalarse.</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-[#faf2f7] border border-[#f0dae8]">
+                    <strong className="text-[#863760] block font-semibold">Trato Personal</strong>
+                    <span className="text-[#7c6377]">Atención directa de Bianca para orientarte y asesorarte.</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 pt-1 border-t border-[#f4e4ee]">
+                <h4 className="font-serif-luxury text-base font-bold text-[#8b3b68] uppercase tracking-wide flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#16a34a]" />
+                  <span>Nuestro Compromiso</span>
+                </h4>
+                <p className="text-[#6d5169]">
+                  Te garantizamos piezas revisadas detalle a detalle, atención transparente sobre existencias y coordinación rápida de entregas personales y envíos seguros.
+                </p>
+              </div>
+
+              {/* Action Buttons in Modal */}
+              <div className="pt-2 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowStoryModal(false);
+                    setSelectedCategory('Todos');
+                    setActiveTab('catalogo');
+                  }}
+                  className="w-full py-3 rounded-2xl bg-[#9e3a6a] hover:bg-[#8d325d] text-white text-xs font-semibold tracking-wider uppercase shadow-md flex items-center justify-center gap-2"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>Explorar el Catálogo de Joyas ↗</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowStoryModal(false);
+                    handleDirectWhatsApp();
+                  }}
+                  className="w-full py-2.5 rounded-2xl bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-semibold tracking-wider shadow-sm flex items-center justify-center gap-2"
+                >
+                  <MessageCircle className="w-4 h-4 fill-white" />
+                  <span>Escribirle a Bianca por WhatsApp</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
