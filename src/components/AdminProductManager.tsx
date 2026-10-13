@@ -24,6 +24,11 @@ import {
   Sparkles,
   Layers,
   Search,
+  Images,
+  Star,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
 } from 'lucide-react';
 import { applyWatermarkToImage } from '../utils/watermark';
 import {
@@ -41,6 +46,7 @@ export interface Product {
   material: string;
   tag: string;
   img: string;
+  images?: string[];
 }
 
 interface AdminProductManagerProps {
@@ -89,6 +95,8 @@ export function AdminProductManager({
   const [desc, setDesc] = useState('');
   const [material, setMaterial] = useState('Chapa de oro 14k hipoalergénico');
   const [tag, setTag] = useState('Nuevo');
+  const [imagesList, setImagesList] = useState<string[]>([]);
+  const [selectedPreviewIndex, setSelectedPreviewIndex] = useState<number>(0);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [isSavingToCloud, setIsSavingToCloud] = useState(false);
@@ -165,42 +173,64 @@ export function AdminProductManager({
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const fileList = e.target.files ? Array.from(e.target.files) : [];
+    if (fileList.length === 0) return;
 
     try {
       setIsProcessingImage(true);
       setErrorMsg(null);
 
-      // Step 1: Initialize watermark phase
+      const newlyAdded: string[] = [];
+
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        const stepNum = i + 1;
+        const total = fileList.length;
+
+        // Step 1: Initialize watermark phase
+        setUploadProgress({
+          percent: Math.round(((i + 0.3) / total) * 100),
+          statusText: `Foto ${stepNum} de ${total}: Estampando marca oficial Bianca Atondo...`,
+          bytesTransferred: 0,
+          totalBytes: file.size,
+          phase: 'watermark',
+        });
+
+        // Auto-stamp watermark
+        const watermarked = await applyWatermarkToImage(file);
+
+        // Step 2 & 3: Fast cloud synchronization
+        const storageUrl = await uploadImageToFirebaseStorage(watermarked, (prog) => {
+          setUploadProgress({
+            ...prog,
+            percent: Math.round(((i + prog.percent / 100) / total) * 100),
+            statusText: `Foto ${stepNum} de ${total}: ${prog.statusText}`,
+          });
+        });
+
+        newlyAdded.push(storageUrl);
+      }
+
+      setImagesList((prev) => {
+        const nextList = [...prev, ...newlyAdded];
+        const newPreviewIdx = nextList.length - 1;
+        setSelectedPreviewIndex(newPreviewIdx);
+        setImagePreview(nextList[0] || '');
+        return nextList;
+      });
+
       setUploadProgress({
-        percent: 15,
-        statusText: '1/3 Estampando marca de agua oficial Bianca Atondo...',
+        percent: 100,
+        statusText: `${newlyAdded.length} ${
+          newlyAdded.length === 1 ? 'foto procesada y asegurada' : 'fotos procesadas y aseguradas'
+        } con éxito`,
         bytesTransferred: 0,
-        totalBytes: file.size,
-        phase: 'watermark',
+        totalBytes: 0,
+        phase: 'completed',
+        downloadUrl: newlyAdded[0],
       });
-
-      // Auto-stamp watermark
-      const watermarked = await applyWatermarkToImage(file);
-      setImagePreview(watermarked);
-
-      // Step 2 & 3: Upload to Firebase Storage with live progress updates
-      setUploadProgress((prev) => ({
-        ...prev,
-        percent: 25,
-        statusText: '2/3 Conectando con Firebase Storage...',
-        phase: 'uploading',
-      }));
-
-      const storageUrl = await uploadImageToFirebaseStorage(watermarked, (prog) => {
-        setUploadProgress(prog);
-      });
-
-      // Save the finalized permanent cloud URL
-      setImagePreview(storageUrl);
     } catch (err) {
-      console.error('Error during image watermarking or storage upload:', err);
+      console.error('Error during image processing:', err);
       setUploadProgress({
         percent: 0,
         statusText: 'Error en la carga de imagen',
@@ -208,10 +238,48 @@ export function AdminProductManager({
         totalBytes: 0,
         phase: 'error',
       });
-      setErrorMsg('No se pudo procesar o subir la foto. Prueba con otra imagen.');
+      setErrorMsg('No se pudo procesar alguna de las fotos. Prueba con otra imagen.');
     } finally {
       setIsProcessingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    setImagesList((prev) => {
+      const nextList = prev.filter((_, idx) => idx !== indexToRemove);
+      const newPreviewIdx = Math.min(selectedPreviewIndex, Math.max(0, nextList.length - 1));
+      setSelectedPreviewIndex(newPreviewIdx);
+      setImagePreview(nextList[0] || '');
+      return nextList;
+    });
+  };
+
+  const handleMakeMainImage = (indexToPromote: number) => {
+    if (indexToPromote === 0) return;
+    setImagesList((prev) => {
+      const target = prev[indexToPromote];
+      const rest = prev.filter((_, idx) => idx !== indexToPromote);
+      const reordered = [target, ...rest];
+      setSelectedPreviewIndex(0);
+      setImagePreview(reordered[0]);
+      return reordered;
+    });
+    showTempSuccess('Foto seleccionada como Portada principal');
+  };
+
+  const handleMoveImage = (fromIndex: number, toIndex: number) => {
+    setImagesList((prev) => {
+      if (toIndex < 0 || toIndex >= prev.length) return prev;
+      const copy = [...prev];
+      const item = copy.splice(fromIndex, 1)[0];
+      copy.splice(toIndex, 0, item);
+      setSelectedPreviewIndex(toIndex);
+      setImagePreview(copy[0]);
+      return copy;
+    });
   };
 
   const handleStartEditProduct = (p: Product) => {
@@ -223,15 +291,25 @@ export function AdminProductManager({
     setDesc(p.desc);
     setMaterial(p.material);
     setTag(p.tag);
-    setImagePreview(p.img);
+    const existing =
+      Array.isArray(p.images) && p.images.length > 0
+        ? p.images
+        : p.img
+        ? [p.img]
+        : [];
+    setImagesList(existing);
+    setSelectedPreviewIndex(0);
+    setImagePreview(existing[0] || p.img || '');
     setAdminTab('products');
     setUploadProgress({
       percent: 100,
-      statusText: 'Imagen sincronizada en la nube',
+      statusText: `${existing.length} ${
+        existing.length === 1 ? 'imagen sincronizada' : 'imágenes sincronizadas'
+      } en la nube`,
       bytesTransferred: 0,
       totalBytes: 0,
       phase: 'completed',
-      downloadUrl: p.img,
+      downloadUrl: existing[0] || p.img,
     });
   };
 
@@ -244,6 +322,8 @@ export function AdminProductManager({
     setDesc('');
     setMaterial('Chapa de oro 14k hipoalergénico');
     setTag('Nuevo');
+    setImagesList([]);
+    setSelectedPreviewIndex(0);
     setImagePreview('');
     setErrorMsg(null);
     setShowQuickAddCategory(false);
@@ -265,16 +345,19 @@ export function AdminProductManager({
       setErrorMsg('El nombre de la joya es obligatorio.');
       return;
     }
-    if (!imagePreview) {
-      setErrorMsg('Por favor selecciona una foto para la joya.');
+    const finalImages = imagesList.length > 0 ? imagesList : (imagePreview ? [imagePreview] : []);
+    if (finalImages.length === 0) {
+      setErrorMsg('Por favor selecciona al menos una foto para la joya.');
       return;
     }
-    if (uploadProgress.phase === 'uploading' || uploadProgress.phase === 'watermark') {
-      setErrorMsg('Por favor espera a que termine de cargarse la imagen a Firebase Storage.');
+    if (isProcessingImage) {
+      setErrorMsg('Las imágenes se están optimizando, un momento por favor.');
       return;
     }
 
-    const numericPrice = hasPrice && price ? parseFloat(price) : undefined;
+    const mainImg = finalImages[0];
+    const numericPrice =
+      hasPrice && price && !isNaN(parseFloat(price)) ? parseFloat(price) : undefined;
     const prodId = editingId !== null ? editingId : Date.now();
 
     const productPayload: Product = {
@@ -285,7 +368,8 @@ export function AdminProductManager({
       desc: desc.trim() || 'Pieza exclusiva de alta joyería.',
       material: material.trim() || 'Chapa de oro 14k',
       tag: tag.trim() || 'Nuevo',
-      img: imagePreview,
+      img: mainImg,
+      images: finalImages,
     };
 
     try {
@@ -293,7 +377,9 @@ export function AdminProductManager({
       setErrorMsg(null);
       await onSaveProduct(productPayload);
       showTempSuccess(
-        editingId ? `Joya "${productPayload.name}" actualizada en la nube` : `Nueva joya publicada en la nube`
+        editingId
+          ? `Joya "${productPayload.name}" con ${finalImages.length} fotos actualizada en la nube`
+          : `Nueva joya "${productPayload.name}" con ${finalImages.length} fotos publicada en la nube exitosamente`
       );
       handleResetProductForm();
     } catch (err) {
@@ -622,192 +708,294 @@ export function AdminProductManager({
                 )}
               </div>
 
-              {/* Photo Uploader with Auto-Watermark and Firebase Storage Visual Progress Bar */}
-              <div>
-                <label className="text-xs font-semibold text-[#4b3347] block mb-1.5">
-                  Foto de la Joya (Estampa Automáticamente la Marca de Agua Oficial Bianca Atondo y Carga a Firebase Storage)
-                </label>
-
-                <div className="flex flex-col sm:flex-row gap-4 items-start">
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full sm:w-44 h-44 rounded-2xl border-2 border-dashed border-[#e3bfd5] bg-white hover:bg-[#fdf9fc] cursor-pointer flex flex-col items-center justify-center p-3 text-center relative overflow-hidden group shadow-xs transition-colors shrink-0"
-                  >
-                    {imagePreview ? (
-                      <>
-                        <img
-                          src={imagePreview}
-                          alt="Vista previa con marca de agua"
-                          className="w-full h-full object-cover rounded-xl"
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-medium rounded-xl">
-                          Cambiar Foto
-                        </div>
-                      </>
-                    ) : (
-                      <div className="space-y-1">
-                        <div className="w-10 h-10 rounded-full bg-[#fde9f2] text-[#ba5489] flex items-center justify-center mx-auto mb-1 group-hover:scale-110 transition-transform">
-                          <CloudUpload className="w-5 h-5" />
-                        </div>
-                        <span className="text-xs font-semibold text-[#4b3548] block">
-                          Toca para subir foto
-                        </span>
-                        <span className="text-[10px] text-[#866f82] block">
-                          Marca de agua Bianca Atondo oficial incluida
-                        </span>
-                      </div>
-                    )}
-
-                    {isProcessingImage && (
-                      <div className="absolute inset-0 bg-white/85 flex flex-col items-center justify-center gap-1.5 p-2 text-[#ba5489]">
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                        <span className="text-[11px] font-semibold text-center">
-                          {uploadProgress.phase === 'watermark'
-                            ? 'Estampando marca…'
-                            : `Subiendo ${uploadProgress.percent}%…`}
-                        </span>
-                      </div>
-                    )}
+              {/* Photo Uploader with Multi-Image Gallery & Close-Up Support */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-xs font-semibold text-[#4b3347] flex items-center gap-1.5">
+                      <Images className="w-3.5 h-3.5 text-[#ba5489]" />
+                      <span>Fotos y Ángulos de la Joya (Galería)</span>
+                    </label>
+                    <p className="text-[10px] text-[#866e81] mt-0.5">
+                      Puedes agregar múltiples fotos (portada, modelo, broche, textura). Se estampa la marca de agua oficial automáticamente.
+                    </p>
                   </div>
+
+                  {imagesList.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isProcessingImage}
+                      className="px-2.5 py-1 rounded-lg bg-[#faedf4] hover:bg-[#f6dbe9] text-[#b44880] text-[11px] font-semibold flex items-center gap-1 transition-colors border border-[#eed4e4] shadow-2xs"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>+ Agregar más fotos</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Multiple Images Container */}
+                <div className="space-y-3">
+                  {imagesList.length === 0 ? (
+                    /* Empty State: Prompt to upload first or multiple images */
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-44 rounded-2xl border-2 border-dashed border-[#e3bfd5] bg-white hover:bg-[#fdf9fc] cursor-pointer flex flex-col items-center justify-center p-4 text-center relative overflow-hidden group shadow-xs transition-colors"
+                    >
+                      <div className="space-y-1.5 max-w-sm">
+                        <div className="w-12 h-12 rounded-full bg-[#fde9f2] text-[#ba5489] flex items-center justify-center mx-auto mb-1 group-hover:scale-110 transition-transform">
+                          <CloudUpload className="w-6 h-6" />
+                        </div>
+                        <span className="text-xs font-bold text-[#4b3548] block">
+                          Toca aquí para seleccionar 1 o varias fotos
+                        </span>
+                        <p className="text-[11px] text-[#7d6579] leading-relaxed">
+                          Sube la foto frontal y fotos adicionales para que tus clientas puedan ver todas las fotos de la joya.
+                        </p>
+                        <span className="inline-block text-[9px] font-semibold text-[#986629] bg-[#fbf5eb] px-2 py-0.5 rounded-full border border-[#eedec7]">
+                          ✨ Marca de agua oficial Bianca Atondo incluida en cada foto
+                        </span>
+                      </div>
+
+                      {isProcessingImage && (
+                        <div className="absolute inset-0 bg-white/90 flex flex-col items-center justify-center gap-2 p-3 text-[#ba5489]">
+                          <Loader2 className="w-7 h-7 animate-spin" />
+                          <span className="text-xs font-semibold text-center">
+                            {uploadProgress.statusText || 'Procesando imágenes...'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Populated State: Carousel / Thumbnails and Inspector preview */
+                    <div className="p-3 bg-white rounded-2xl border border-[#ecd5e4] space-y-3 shadow-2xs">
+                      {/* Active Preview Banner & Inspection Details */}
+                      <div className="flex flex-col sm:flex-row gap-3 items-center">
+                        <div className="relative w-full sm:w-36 h-36 rounded-xl overflow-hidden bg-[#faf1f6] border border-[#f0dce8] shrink-0 shadow-inner group">
+                          <img
+                            src={imagesList[selectedPreviewIndex] || imagesList[0]}
+                            alt="Vista previa seleccionada"
+                            className="w-full h-full object-cover"
+                          />
+
+                          <div className="absolute top-1.5 left-1.5">
+                            {selectedPreviewIndex === 0 ? (
+                              <span className="text-[8px] font-bold uppercase bg-[#b58a42] text-white px-1.5 py-0.5 rounded shadow-xs flex items-center gap-0.5">
+                                <Star className="w-2 h-2 fill-current" /> Portada
+                              </span>
+                            ) : (
+                              <span className="text-[8px] font-bold uppercase bg-black/60 text-white px-1.5 py-0.5 rounded shadow-xs">
+                                Foto #{selectedPreviewIndex + 1}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex-1 w-full space-y-1.5 text-xs text-[#6e586d]">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-[#3e273c] text-xs">
+                              {selectedPreviewIndex === 0
+                                ? 'Foto Principal (Portada del Catálogo)'
+                                : `Foto #${selectedPreviewIndex + 1}: Foto de Galería`}
+                            </span>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#faf0f6] text-[#b34d83] font-semibold border border-[#eed0e3]">
+                              {imagesList.length} {imagesList.length === 1 ? 'foto total' : 'fotos totales'}
+                            </span>
+                          </div>
+
+                          <p className="text-[11px] leading-relaxed text-[#7a6479]">
+                            {selectedPreviewIndex === 0
+                              ? 'Esta es la imagen de presentación que verá la clienta en el catálogo principal de la tienda.'
+                              : 'Esta foto estará disponible en la galería para que las clientas puedan ver todas las fotos.'}
+                          </p>
+
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {selectedPreviewIndex !== 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleMakeMainImage(selectedPreviewIndex)}
+                                className="px-2 py-1 rounded-lg bg-[#fef7ee] hover:bg-[#fdeed6] text-[#9a6423] text-[10px] font-semibold border border-[#eedbbd] flex items-center gap-1 transition-colors"
+                              >
+                                <Star className="w-2.5 h-2.5 fill-current" />
+                                <span>Poner como Portada Principal</span>
+                              </button>
+                            )}
+
+                            {selectedPreviewIndex > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleMoveImage(selectedPreviewIndex, selectedPreviewIndex - 1)}
+                                className="px-2 py-1 rounded-lg bg-[#faf2f7] hover:bg-[#f3e3ee] text-[#71546e] text-[10px] font-medium border border-[#ebd2e2] flex items-center gap-0.5 transition-colors"
+                                title="Mover hacia la izquierda"
+                              >
+                                <ChevronLeft className="w-2.5 h-2.5" />
+                                <span>Mover antes</span>
+                              </button>
+                            )}
+
+                            {selectedPreviewIndex < imagesList.length - 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleMoveImage(selectedPreviewIndex, selectedPreviewIndex + 1)}
+                                className="px-2 py-1 rounded-lg bg-[#faf2f7] hover:bg-[#f3e3ee] text-[#71546e] text-[10px] font-medium border border-[#ebd2e2] flex items-center gap-0.5 transition-colors"
+                                title="Mover hacia la derecha"
+                              >
+                                <span>Mover después</span>
+                                <ChevronRight className="w-2.5 h-2.5" />
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(selectedPreviewIndex)}
+                              className="px-2 py-1 rounded-lg bg-[#fef2f2] hover:bg-[#fee2e2] text-[#b91c1c] text-[10px] font-semibold border border-[#fecaca] flex items-center gap-1 transition-colors"
+                            >
+                              <Trash2 className="w-2.5 h-2.5" />
+                              <span>Eliminar foto</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Thumbnails Strip */}
+                      <div>
+                        <div className="text-[10px] font-bold text-[#866e81] uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                          <span>Toca cualquier foto para seleccionarla o reordenar:</span>
+                          <span className="text-[#a04e79]">La #1 siempre es la portada</span>
+                        </div>
+
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5 scrollbar-thin">
+                          {imagesList.map((imgUrl, idx) => {
+                            const isSelected = selectedPreviewIndex === idx;
+                            return (
+                              <div
+                                key={idx}
+                                onClick={() => setSelectedPreviewIndex(idx)}
+                                className={`relative w-16 h-16 rounded-xl overflow-hidden shrink-0 cursor-pointer transition-all border-2 group ${
+                                  isSelected
+                                    ? 'border-[#b58a42] ring-2 ring-[#eedec7] shadow-sm scale-105'
+                                    : 'border-[#ebd4e3] hover:border-[#ba5489] opacity-80 hover:opacity-100'
+                                }`}
+                              >
+                                <img
+                                  src={imgUrl}
+                                  alt={`Miniatura ${idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+
+                                <div className="absolute top-0.5 left-0.5">
+                                  {idx === 0 ? (
+                                    <span className="w-3.5 h-3.5 rounded-full bg-[#b58a42] text-white flex items-center justify-center text-[7px] font-bold shadow-2xs">
+                                      ★
+                                    </span>
+                                  ) : (
+                                    <span className="w-3.5 h-3.5 rounded-full bg-black/60 text-white flex items-center justify-center text-[7px] font-bold">
+                                      {idx + 1}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    handleRemoveImage(idx);
+                                  }}
+                                  className="absolute bottom-0.5 right-0.5 w-4 h-4 rounded-full bg-red-600/90 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Quitar foto"
+                                >
+                                  <X className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            );
+                          })}
+
+                          {/* Extra Add Button Card */}
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isProcessingImage}
+                            className="w-16 h-16 rounded-xl border-2 border-dashed border-[#e4bdd6] hover:border-[#ba5489] bg-[#fbf5f9] hover:bg-[#faedf4] flex flex-col items-center justify-center text-[#ba5489] shrink-0 transition-colors cursor-pointer group"
+                            title="Añadir otra foto / ángulo"
+                          >
+                            <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                            <span className="text-[8px] font-bold">+ Foto</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={handleFileChange}
                     className="hidden"
                   />
 
-                  <div className="flex-1 w-full space-y-2 text-xs text-[#715c6f] leading-relaxed">
-                    <div className="p-3 bg-white rounded-xl border border-[#f0dde9]">
-                      <span className="font-semibold text-[#8b3b68] block mb-1">
-                        ✨ Marca de Agua Oficial y Almacenamiento en la Nube:
-                      </span>
-                      <p className="text-[11px]">
-                        Al seleccionar cualquier foto, el sistema le estampa automáticamente el sello de <strong>Bianca Atondo Joyería</strong> y la transfiere directamente a <strong>Firebase Storage</strong> para que se cargue a máxima velocidad en cualquier celular del mundo.
-                      </p>
-                    </div>
-
-                    {/* VISUAL PROGRESS BAR FOR FIREBASE STORAGE */}
-                    {uploadProgress.phase !== 'idle' && (
-                      <div className="p-3.5 bg-gradient-to-br from-[#fdf6fa] to-[#f9edf5] rounded-xl border border-[#ecd2e2] shadow-xs space-y-2.5 animate-fade-in">
-                        {/* Header with Title and Percentage */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {uploadProgress.phase === 'completed' ? (
-                              <div className="w-6 h-6 rounded-full bg-[#dcfce7] text-[#15803d] flex items-center justify-center shrink-0 shadow-xs">
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                              </div>
-                            ) : uploadProgress.phase === 'error' ? (
-                              <div className="w-6 h-6 rounded-full bg-[#fee2e2] text-[#b91c1c] flex items-center justify-center shrink-0">
-                                <AlertCircle className="w-3.5 h-3.5" />
-                              </div>
-                            ) : (
-                              <div className="w-6 h-6 rounded-full bg-[#fae2f0] text-[#ba5489] flex items-center justify-center shrink-0">
-                                <CloudUpload className="w-3.5 h-3.5 animate-bounce" />
-                              </div>
-                            )}
-                            <div>
-                              <span className="text-xs font-bold text-[#392437] block leading-tight">
-                                {uploadProgress.phase === 'completed'
-                                  ? 'Carga a Firebase Storage Completada'
-                                  : uploadProgress.phase === 'watermark'
-                                  ? 'Estampando Marca de Agua Oficial'
-                                  : uploadProgress.phase === 'error'
-                                  ? 'Error en la Carga'
-                                  : 'Subiendo a Firebase Storage'}
-                              </span>
-                              <span className="text-[10px] text-[#866e81]">
-                                {uploadProgress.phase === 'completed'
-                                  ? 'Foto optimizada y lista para visualización global'
-                                  : 'Transfiriendo bytes a los servidores en la nube de Google Firebase'}
-                              </span>
+                  {/* VISUAL PROGRESS BAR FOR CLOUD UPLOAD */}
+                  {uploadProgress.phase !== 'idle' && (
+                    <div className="p-3 bg-gradient-to-br from-[#fdf6fa] to-[#f9edf5] rounded-xl border border-[#ecd2e2] shadow-xs space-y-2 animate-fade-in">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {uploadProgress.phase === 'completed' ? (
+                            <div className="w-5 h-5 rounded-full bg-[#dcfce7] text-[#15803d] flex items-center justify-center shrink-0 shadow-xs">
+                              <CheckCircle2 className="w-3 h-3" />
                             </div>
-                          </div>
-
-                          <div className="text-right">
-                            <span
-                              className={`font-mono text-sm font-bold ${
-                                uploadProgress.phase === 'completed'
-                                  ? 'text-[#15803d]'
-                                  : 'text-[#ba5489]'
-                              }`}
-                            >
-                              {uploadProgress.percent}%
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* The Animated Progress Bar Track */}
-                        <div className="relative w-full h-2.5 bg-[#eedae7] rounded-full overflow-hidden p-0.5 shadow-inner">
-                          <div
-                            className={`h-full rounded-full transition-all duration-300 ease-out relative ${
-                              uploadProgress.phase === 'completed'
-                                ? 'bg-gradient-to-r from-[#10b981] to-[#059669]'
-                                : uploadProgress.phase === 'error'
-                                ? 'bg-red-500'
-                                : 'bg-gradient-to-r from-[#ba5489] via-[#e284b3] to-[#b58a42]'
-                            }`}
-                            style={{ width: `${Math.max(6, uploadProgress.percent)}%` }}
-                          >
-                            {(uploadProgress.phase === 'uploading' || uploadProgress.phase === 'watermark') && (
-                              <div className="absolute inset-0 bg-white/30 animate-pulse rounded-full" />
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Status Text and Byte Metric */}
-                        <div className="flex items-center justify-between text-[11px] text-[#715c6f] pt-0.5">
-                          <span className="font-medium truncate pr-2 text-[#4c3547]">
-                            {uploadProgress.statusText || 'Procesando archivo...'}
-                          </span>
-                          {uploadProgress.totalBytes > 0 && (
-                            <span className="shrink-0 text-[10px] font-mono text-[#91768b] bg-white px-2 py-0.5 rounded-md border border-[#edd7e6]">
-                              {uploadProgress.bytesTransferred > 0
-                                ? `${Math.round(uploadProgress.bytesTransferred / 1024)} KB / ${Math.round(uploadProgress.totalBytes / 1024)} KB`
-                                : `${Math.round(uploadProgress.totalBytes / 1024)} KB`}
-                            </span>
+                          ) : uploadProgress.phase === 'error' ? (
+                            <div className="w-5 h-5 rounded-full bg-[#fee2e2] text-[#b91c1c] flex items-center justify-center shrink-0">
+                              <AlertCircle className="w-3 h-3" />
+                            </div>
+                          ) : (
+                            <div className="w-5 h-5 rounded-full bg-[#fae2f0] text-[#ba5489] flex items-center justify-center shrink-0">
+                              <CloudUpload className="w-3 h-3 animate-bounce" />
+                            </div>
                           )}
+                          <div>
+                            <span className="text-xs font-bold text-[#392437] block leading-tight">
+                              {uploadProgress.phase === 'completed'
+                                ? 'Fotos Listas y Aseguradas'
+                                : uploadProgress.phase === 'watermark'
+                                ? 'Estampando Marca de Agua Oficial'
+                                : uploadProgress.phase === 'error'
+                                ? 'Error en la Carga'
+                                : 'Preparando Imágenes para la Nube'}
+                            </span>
+                            <span className="text-[10px] text-[#866e81]">
+                              {uploadProgress.statusText || 'Procesando píxeles y sellado oficial'}
+                            </span>
+                          </div>
                         </div>
 
-                        {/* Three Step Indicator Badges */}
-                        <div className="grid grid-cols-3 gap-1.5 pt-1 text-[10px]">
-                          <div
-                            className={`p-1.5 rounded-lg border text-center transition-colors flex items-center justify-center gap-1 ${
-                              uploadProgress.percent >= 20
-                                ? 'bg-[#dcfce7] border-[#bbf7d0] text-[#15803d] font-semibold'
-                                : 'bg-white border-[#f0dce8] text-[#977f93]'
-                            }`}
-                          >
-                            {uploadProgress.percent >= 20 ? '✓' : '1.'} Marca de Agua
-                          </div>
-                          <div
-                            className={`p-1.5 rounded-lg border text-center transition-colors flex items-center justify-center gap-1 ${
-                              uploadProgress.phase === 'completed' || uploadProgress.percent >= 95
-                                ? 'bg-[#dcfce7] border-[#bbf7d0] text-[#15803d] font-semibold'
-                                : uploadProgress.phase === 'uploading'
-                                ? 'bg-[#fce8f3] border-[#f4c2de] text-[#a03c73] font-semibold animate-pulse'
-                                : 'bg-white border-[#f0dce8] text-[#977f93]'
-                            }`}
-                          >
-                            {uploadProgress.phase === 'completed' || uploadProgress.percent >= 95
-                              ? '✓'
-                              : '2.'}{' '}
-                            Firebase Storage
-                          </div>
-                          <div
-                            className={`p-1.5 rounded-lg border text-center transition-colors flex items-center justify-center gap-1 ${
+                        <div className="text-right">
+                          <span
+                            className={`font-mono text-xs font-bold ${
                               uploadProgress.phase === 'completed'
-                                ? 'bg-[#dcfce7] border-[#bbf7d0] text-[#15803d] font-semibold'
-                                : 'bg-white border-[#f0dce8] text-[#977f93]'
+                                ? 'text-[#15803d]'
+                                : 'text-[#ba5489]'
                             }`}
                           >
-                            {uploadProgress.phase === 'completed' ? '✓' : '3.'} Nube Lista
-                          </div>
+                            {uploadProgress.percent}%
+                          </span>
                         </div>
                       </div>
-                    )}
-                  </div>
+
+                      <div className="relative w-full h-2 bg-[#eedae7] rounded-full overflow-hidden p-0.5 shadow-inner">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ease-out relative ${
+                            uploadProgress.phase === 'completed'
+                              ? 'bg-gradient-to-r from-[#10b981] to-[#059669]'
+                              : uploadProgress.phase === 'error'
+                              ? 'bg-red-500'
+                              : 'bg-gradient-to-r from-[#ba5489] via-[#e284b3] to-[#b58a42]'
+                          }`}
+                          style={{ width: `${Math.max(6, uploadProgress.percent)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -977,28 +1165,23 @@ export function AdminProductManager({
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={
-                    isProcessingImage ||
-                    isSavingToCloud ||
-                    uploadProgress.phase === 'uploading' ||
-                    uploadProgress.phase === 'watermark'
-                  }
+                  disabled={isProcessingImage || isSavingToCloud}
                   className="w-full py-3 rounded-xl bg-[#ba5489] text-white text-xs font-semibold hover:bg-[#a84779] transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 active:scale-[0.99]"
                 >
                   {isSavingToCloud ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Guardando pieza en Firestore…</span>
+                      <span>Guardando pieza en la nube…</span>
                     </>
-                  ) : uploadProgress.phase === 'uploading' || uploadProgress.phase === 'watermark' ? (
+                  ) : isProcessingImage ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Subiendo foto a Firebase Storage ({uploadProgress.percent}%)…</span>
+                      <span>Optimizando foto oficial ({uploadProgress.percent}%)…</span>
                     </>
                   ) : (
                     <>
                       <Cloud className="w-4 h-4" />
-                      <span>{editingId ? 'Actualizar en la Nube' : 'Publicar en la Nube Mundial'}</span>
+                      <span>{editingId ? 'Actualizar Joya en la Nube' : 'Publicar Joya en la Nube Mundial'}</span>
                     </>
                   )}
                 </button>
@@ -1108,6 +1291,12 @@ export function AdminProductManager({
                             )}
                             <span className="mx-1.5">·</span>
                             <span>{p.tag}</span>
+                            {p.images && p.images.length > 1 && (
+                              <>
+                                <span className="mx-1.5">·</span>
+                                <span className="text-[#a04e79] font-medium">📸 {p.images.length} fotos</span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>

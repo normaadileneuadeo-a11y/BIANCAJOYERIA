@@ -21,6 +21,7 @@ import {
   QrCode,
   UserPlus,
   ChevronRight,
+  ChevronLeft,
   Gem,
   ArrowLeft,
   Copy,
@@ -28,6 +29,12 @@ import {
   SlidersHorizontal,
   Instagram,
   Sparkle,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Eye,
+  Images,
+  RotateCcw,
 } from 'lucide-react';
 
 import heroImg from './assets/images/hero_jewelry_showcase_1791672703497.jpg';
@@ -42,6 +49,7 @@ import nfcBottomJewelryImg from './assets/images/nfc_bottom_jewelry_179167898125
 import { PinkGlitterCanvas } from './components/PinkGlitterCanvas';
 import { RealQRCode } from './components/RealQRCode';
 import { AdminProductManager, Product } from './components/AdminProductManager';
+import { JewelryCloseUpModal } from './components/JewelryCloseUpModal';
 import {
   subscribeToProducts,
   saveProductToCloud,
@@ -74,6 +82,7 @@ const INITIAL_PRODUCTS: Product[] = [
     material: 'Chapa de oro 14k con recubrimiento protector hipoalergénico',
     tag: 'Favorito',
     img: collarImg,
+    images: [collarImg, nfcModelNeckImg, packagingImg],
   },
   {
     id: 2,
@@ -84,6 +93,7 @@ const INITIAL_PRODUCTS: Product[] = [
     material: 'Baño de oro 14k y micro-circonias de alta pureza',
     tag: 'Para combinar',
     img: anillosImg,
+    images: [anillosImg, nfcBottomJewelryImg, packagingImg],
   },
   {
     id: 3,
@@ -94,6 +104,7 @@ const INITIAL_PRODUCTS: Product[] = [
     material: 'Aleación dorada premium de larga duración',
     tag: 'Clásico',
     img: pulseraImg,
+    images: [pulseraImg, nfcBottomJewelryImg, packagingImg],
   },
   {
     id: 4,
@@ -104,6 +115,7 @@ const INITIAL_PRODUCTS: Product[] = [
     material: 'Poste hipoalergénico libre de níquel con chapa dorada',
     tag: 'Esencial',
     img: aretesImg,
+    images: [aretesImg, nfcModelNeckImg, packagingImg],
   },
   {
     id: 5,
@@ -114,6 +126,7 @@ const INITIAL_PRODUCTS: Product[] = [
     material: 'Baño de oro 14k resistente y duradero',
     tag: 'Regalo',
     img: heroImg,
+    images: [heroImg, packagingImg, collarImg],
   },
   {
     id: 6,
@@ -124,6 +137,7 @@ const INITIAL_PRODUCTS: Product[] = [
     material: 'Chapa de oro 14k con acabado pulido espejo',
     tag: 'Elegante',
     img: anillosImg,
+    images: [anillosImg, nfcBottomJewelryImg, packagingImg],
   },
   {
     id: 7,
@@ -134,6 +148,7 @@ const INITIAL_PRODUCTS: Product[] = [
     material: 'Acero con chapa de oro 14k resistente al uso cotidiano',
     tag: 'Versátil',
     img: pulseraImg,
+    images: [pulseraImg, packagingImg],
   },
   {
     id: 8,
@@ -144,6 +159,7 @@ const INITIAL_PRODUCTS: Product[] = [
     material: 'Diseño liviano hipoalergénico con acabado dorado fino',
     tag: 'Especial',
     img: aretesImg,
+    images: [aretesImg, nfcModelNeckImg, packagingImg],
   },
 ];
 
@@ -228,6 +244,9 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [activeModalImageIndex, setActiveModalImageIndex] = useState<number>(0);
+  const [showCloseUpInspector, setShowCloseUpInspector] = useState<boolean>(false);
+  const [zoomLevel, setZoomLevel] = useState<number>(1.5);
   const [showQRModal, setShowQRModal] = useState(false);
   const [showNFCStandModal, setShowNFCStandModal] = useState(false);
   const [showStoryModal, setShowStoryModal] = useState(false);
@@ -281,11 +300,21 @@ export default function App() {
   }, []);
 
   const handleSaveProductCloud = async (prod: Product) => {
+    setProducts((prev) => {
+      const idx = prev.findIndex((p) => p.id === prod.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = prod;
+        return copy;
+      }
+      return [prod, ...prev];
+    });
     await saveProductToCloud(prod);
     showToast(`"${prod.name}" sincronizada en la nube mundial ☁️`);
   };
 
   const handleDeleteProductCloud = async (id: number) => {
+    setProducts((prev) => prev.filter((p) => p.id !== id));
     await deleteProductFromCloud(id);
     showToast('Pieza eliminada de la nube 🗑️');
   };
@@ -1023,37 +1052,58 @@ END:VCARD`;
                       className="bg-white rounded-2xl border border-[#eed8e6] overflow-hidden flex flex-col justify-between shadow-xs hover:shadow-md transition-shadow"
                     >
                       {/* Image with Official Watermark */}
-                      <div className="relative aspect-[4/3.8] bg-[#fbf4f8]">
+                      <div
+                        onClick={() => {
+                          setSelectedProduct(product);
+                          setActiveModalImageIndex(0);
+                          setShowCloseUpInspector(false);
+                          setZoomLevel(1.5);
+                        }}
+                        className="relative aspect-[4/3.8] bg-[#fbf4f8] cursor-pointer group"
+                      >
                         <img
                           src={product.img}
                           alt={product.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           loading="lazy"
                         />
                         <span className="absolute top-2 left-2 text-[9px] font-semibold uppercase tracking-wider text-[#986629] bg-white/95 px-1.5 py-0.5 rounded-md border border-[#e9d6be]">
                           {product.tag}
                         </span>
+
+                        {/* Multiple photos badge if product has more than 1 image */}
+                        {product.images && product.images.length > 1 && (
+                          <span className="absolute bottom-2 left-2 text-[8px] font-bold text-white bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/20 flex items-center gap-1 shadow-xs">
+                            <Images className="w-2.5 h-2.5 text-[#f4d38c]" />
+                            <span>{product.images.length} fotos</span>
+                          </span>
+                        )}
+
                         <button
-                          onClick={() => toggleFavorite(product.id)}
-                          className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center ${
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite(product.id);
+                          }}
+                          className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
                             isFav ? 'bg-[#ba5489] text-white' : 'bg-white/90 text-[#8e6884]'
                           }`}
                         >
                           <Heart className={`w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}`} />
                         </button>
 
-                        {/* Watermark badge on photo */}
-                        <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-full bg-black/45 backdrop-blur-xs flex items-center gap-1 pointer-events-none select-none border border-white/20">
-                          <span className="w-2.5 h-2.5 rounded-full bg-white text-[#b58a42] text-[6px] font-bold font-serif-luxury flex items-center justify-center">B</span>
-                          <span className="text-[7px] tracking-wider font-semibold text-white/95 uppercase">Bianca Joyería</span>
-                        </div>
+                        {/* Watermark badge only on local bundled catalog photos that do not have a baked watermark */}
+                        {!product.img.startsWith('data:') && !product.img.startsWith('http') && (
+                          <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-full bg-black/45 backdrop-blur-xs flex items-center gap-1 pointer-events-none select-none border border-white/20">
+                            <span className="w-2.5 h-2.5 rounded-full bg-white text-[#b58a42] text-[6px] font-bold font-serif-luxury flex items-center justify-center">B</span>
+                            <span className="text-[7px] tracking-wider font-semibold text-white/95 uppercase">Bianca Joyería</span>
+                          </div>
+                        )}
 
-                        <button
-                          onClick={() => setSelectedProduct(product)}
-                          className="absolute inset-x-2 bottom-8 py-1 bg-[#3f273b]/80 backdrop-blur-xs text-white text-[10px] rounded-lg text-center opacity-0 hover:opacity-100 transition-opacity"
-                        >
-                          Ver detalles
-                        </button>
+                        {/* Quick View Button */}
+                        <div className="absolute inset-x-2 bottom-7 py-1 bg-[#3f273b]/85 backdrop-blur-xs text-white text-[10px] font-medium rounded-lg text-center opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 shadow-xs">
+                          <Eye className="w-3 h-3" />
+                          <span>Ver fotos</span>
+                        </div>
                       </div>
 
                       {/* Content */}
@@ -1480,34 +1530,142 @@ END:VCARD`;
 
       {/* MODAL 2: PRODUCT QUICK VIEW */}
       {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
           <div
-            className="w-full max-w-sm bg-white rounded-3xl shadow-2xl border border-[#eed7e5] overflow-hidden flex flex-col max-h-[90vh]"
+            className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#eed7e5] overflow-hidden flex flex-col max-h-[92vh]"
             role="dialog"
             aria-modal="true"
           >
-            <div className="relative aspect-square bg-[#faf1f6]">
-              <img
-                src={selectedProduct.img}
-                alt={selectedProduct.name}
-                className="w-full h-full object-cover"
-              />
-              <button
-                onClick={() => setSelectedProduct(null)}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 text-[#7d5d76] flex items-center justify-center shadow-xs"
-              >
-                <X className="w-4 h-4" />
-              </button>
-              <span className="absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-wider text-[#986629] bg-white/90 px-2 py-0.5 rounded-md border border-[#e9d6be]">
-                {selectedProduct.tag}
-              </span>
+            {/* Gallery Image Display */}
+            {(() => {
+              const modalImages =
+                Array.isArray(selectedProduct.images) && selectedProduct.images.length > 0
+                  ? selectedProduct.images
+                  : selectedProduct.img
+                  ? [selectedProduct.img]
+                  : [];
+              const safeIndex = Math.min(activeModalImageIndex, Math.max(0, modalImages.length - 1));
+              const currentImg = modalImages[safeIndex] || selectedProduct.img;
 
-              {/* Watermark badge on modal photo */}
-              <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-full bg-black/50 backdrop-blur-xs flex items-center gap-1.5 pointer-events-none select-none border border-white/20">
-                <span className="w-3.5 h-3.5 rounded-full bg-white text-[#b58a42] text-[8px] font-bold font-serif-luxury flex items-center justify-center">B</span>
-                <span className="text-[9px] tracking-wider font-semibold text-white/95 uppercase">Bianca Joyería</span>
-              </div>
-            </div>
+              return (
+                <div>
+                  <div className="relative aspect-square bg-[#faf1f6] overflow-hidden group">
+                    <img
+                      src={currentImg}
+                      alt={selectedProduct.name}
+                      className="w-full h-full object-cover transition-all duration-200"
+                    />
+
+                    {/* Navigation Arrows if multiple images */}
+                    {modalImages.length > 1 && (
+                      <>
+                        <button
+                          onClick={() =>
+                            setActiveModalImageIndex((prev) =>
+                              prev > 0 ? prev - 1 : modalImages.length - 1
+                            )
+                          }
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#7d5d76] flex items-center justify-center shadow-md border border-white/60 transition-transform active:scale-95"
+                          title="Foto anterior"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            setActiveModalImageIndex((prev) =>
+                              prev < modalImages.length - 1 ? prev + 1 : 0
+                            )
+                          }
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#7d5d76] flex items-center justify-center shadow-md border border-white/60 transition-transform active:scale-95"
+                          title="Siguiente foto"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+
+                    {/* Close Modal button */}
+                    <button
+                      onClick={() => setSelectedProduct(null)}
+                      className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 text-[#7d5d76] flex items-center justify-center shadow-xs hover:bg-white"
+                      title="Cerrar"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+
+                    {/* Product tag badge */}
+                    <span className="absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-wider text-[#986629] bg-white/95 px-2 py-0.5 rounded-md border border-[#e9d6be] shadow-2xs">
+                      {selectedProduct.tag}
+                    </span>
+
+                    {/* Photo counter badge */}
+                    {modalImages.length > 1 && (
+                      <span className="absolute top-3 left-24 text-[10px] font-bold text-white bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-md border border-white/20">
+                        {safeIndex + 1} / {modalImages.length}
+                      </span>
+                    )}
+
+                    {/* Button: "Ver fotos" */}
+                    <button
+                      onClick={() => setShowCloseUpInspector(true)}
+                      className="absolute bottom-3 left-3 px-3 py-1.5 rounded-xl bg-black/75 hover:bg-black/90 text-white text-[11px] font-bold tracking-wide backdrop-blur-xs flex items-center gap-1.5 border border-white/25 shadow-lg active:scale-95 transition-all group/btn"
+                      title="Ver fotos"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-[#f1cb7a] group-hover/btn:scale-110 transition-transform" />
+                      <span>Ver fotos</span>
+                    </button>
+
+                    {/* Watermark badge only on local bundled catalog photos that do not have a baked watermark */}
+                    {!currentImg.startsWith('data:') && !currentImg.startsWith('http') && (
+                      <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-full bg-black/50 backdrop-blur-xs flex items-center gap-1.5 pointer-events-none select-none border border-white/20">
+                        <span className="w-3.5 h-3.5 rounded-full bg-white text-[#b58a42] text-[8px] font-bold font-serif-luxury flex items-center justify-center">
+                          B
+                        </span>
+                        <span className="text-[9px] tracking-wider font-semibold text-white/95 uppercase">
+                          Bianca Joyería
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Thumbnail Row if more than 1 image */}
+                  {modalImages.length > 1 && (
+                    <div className="px-4 py-2 bg-[#faf3f7] border-b border-[#f1dce8] flex items-center gap-2 overflow-x-auto scrollbar-thin">
+                      <span className="text-[10px] font-bold text-[#8c577b] uppercase shrink-0">
+                        Fotos:
+                      </span>
+                      {modalImages.map((imgUrl, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setActiveModalImageIndex(idx)}
+                          className={`relative w-11 h-11 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${
+                            idx === safeIndex
+                              ? 'border-[#b58a42] ring-2 ring-[#e8d5b8] scale-105 shadow-xs'
+                              : 'border-[#eed5e5] opacity-70 hover:opacity-100'
+                          }`}
+                        >
+                          <img
+                            src={imgUrl}
+                            alt={`Miniatura ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <span className="absolute bottom-0 right-0 text-[7px] font-bold bg-black/60 text-white px-0.5 rounded-tl">
+                            {idx === 0 ? '★' : idx + 1}
+                          </span>
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setShowCloseUpInspector(true)}
+                        className="ml-auto text-[10px] text-[#b44880] hover:underline font-semibold flex items-center gap-1 shrink-0"
+                      >
+                        <Eye className="w-3 h-3" />
+                        <span>Ver fotos</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="p-5 space-y-3 overflow-y-auto">
               <div className="flex items-center justify-between">
@@ -1563,6 +1721,24 @@ END:VCARD`;
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL 2.5: DEDICATED CLOSE-UP INSPECTOR */}
+      {selectedProduct && showCloseUpInspector && (
+        <JewelryCloseUpModal
+          isOpen={showCloseUpInspector}
+          onClose={() => setShowCloseUpInspector(false)}
+          product={selectedProduct}
+          initialIndex={activeModalImageIndex}
+          onAddToCart={(id) => {
+            addToCart(id);
+            setSelectedProduct(null);
+          }}
+          onOrderWhatsApp={(prod) => {
+            handleOrderSingleProduct(prod);
+            setSelectedProduct(null);
+          }}
+        />
       )}
 
       {/* MODAL 3: QR CODE MODAL FOR SHARING IN-STORE */}

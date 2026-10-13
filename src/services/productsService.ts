@@ -15,70 +15,89 @@ import {
 import { db } from '../firebase';
 import { Product } from '../components/AdminProductManager';
 
-const PRODUCTS_COLLECTION = 'products';
+export const PRODUCTS_COLLECTION = 'products';
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errMessage = error instanceof Error ? error.message : String(error);
-  console.error(`[Firestore Error - ${operationType} on ${path}]:`, errMessage);
-}
-
-// Test connection on boot
+/**
+ * Tests direct connection to Firestore by reading from the server.
+ */
 export async function testFirestoreConnection(): Promise<boolean> {
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    await getDocFromServer(doc(db, PRODUCTS_COLLECTION, '__ping_probe__'));
     return true;
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Firestore is running in offline mode.');
+  } catch (error: any) {
+    if (error?.code === 'not-found' || error?.message?.includes('not found')) {
+      return true;
     }
     return false;
   }
 }
 
 /**
- * Subscribes to real-time products updates from Firestore.
- * Automatically seeds the database if empty so customers worldwide see the initial collection immediately.
+ * Listens to real-time updates for products in Firestore.
  */
 export function subscribeToProducts(
   initialFallback: Product[],
   onUpdate: (products: Product[]) => void
 ): () => void {
-  const colRef = collection(db, PRODUCTS_COLLECTION);
+  const productsCol = collection(db, PRODUCTS_COLLECTION);
 
   const unsubscribe = onSnapshot(
-    colRef,
+    productsCol,
     async (snapshot) => {
       if (snapshot.empty) {
-        // First-time cloud seed: save initial catalog to Firestore
+        // If Firestore collection is empty, seed with initial defaults cleanly
         try {
           for (const item of initialFallback) {
-            await setDoc(doc(db, PRODUCTS_COLLECTION, String(item.id)), item);
+            const fallbackImages =
+              Array.isArray(item.images) && item.images.length > 0
+                ? item.images
+                : item.img
+                ? [item.img]
+                : [];
+
+            const cleanedSeed: Record<string, any> = {
+              id: Number(item.id),
+              name: (item.name || '').trim(),
+              category: (item.category || 'Collares').trim(),
+              desc: (item.desc || '').trim(),
+              material: (item.material || 'Chapa de oro 14k').trim(),
+              tag: (item.tag || 'Nuevo').trim(),
+              img: item.img || fallbackImages[0] || '',
+              images: fallbackImages,
+              price: typeof item.price === 'number' && item.price > 0 ? item.price : null,
+              updatedAt: Date.now(),
+            };
+            await setDoc(doc(db, PRODUCTS_COLLECTION, String(item.id)), cleanedSeed);
           }
         } catch (e) {
-          handleFirestoreError(e, OperationType.WRITE, PRODUCTS_COLLECTION);
+          console.error('Error seeding initial products in Firestore:', e);
         }
         onUpdate(initialFallback);
       } else {
         const cloudProducts: Product[] = snapshot.docs.map((docSnap) => {
           const data = docSnap.data();
+          const numericPrice =
+            typeof data.price === 'number' && !isNaN(data.price) && data.price > 0
+              ? Number(data.price)
+              : undefined;
+
+          const imagesList: string[] =
+            Array.isArray(data.images) && data.images.length > 0
+              ? data.images.filter((u: any) => typeof u === 'string' && u.trim().length > 0)
+              : data.img
+              ? [data.img]
+              : [];
+
           return {
             id: Number(data.id) || Number(docSnap.id),
-            name: data.name,
-            category: data.category,
-            price: data.price ? Number(data.price) : undefined,
+            name: data.name || '',
+            category: data.category || 'Collares',
+            price: numericPrice,
             desc: data.desc || '',
             material: data.material || '',
             tag: data.tag || 'Nuevo',
-            img: data.img,
+            img: data.img || imagesList[0] || '',
+            images: imagesList,
           } as Product;
         });
 
@@ -88,7 +107,7 @@ export function subscribeToProducts(
       }
     },
     (error) => {
-      handleFirestoreError(error, OperationType.LIST, PRODUCTS_COLLECTION);
+      console.error('Firestore products listener error:', error);
       // Fallback to local cache if network is unavailable
       onUpdate(initialFallback);
     }
@@ -98,14 +117,44 @@ export function subscribeToProducts(
 }
 
 /**
- * Saves or updates a product in Firestore (visible instantly worldwide).
+ * Saves or updates a product cleanly in Firestore without undefined fields.
+ * Guarantees support for multiple product images and detail close-ups.
  */
 export async function saveProductToCloud(product: Product): Promise<void> {
   try {
     const docRef = doc(db, PRODUCTS_COLLECTION, String(product.id));
-    await setDoc(docRef, product);
+
+    const cleanedImages =
+      Array.isArray(product.images) && product.images.length > 0
+        ? product.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
+        : product.img
+        ? [product.img]
+        : [];
+
+    const mainImg = product.img || cleanedImages[0] || '';
+
+    // Ensure all fields are explicitly clean and serializable (Firestore rejects undefined)
+    const cleanedPayload: Record<string, any> = {
+      id: Number(product.id),
+      name: String(product.name || '').trim(),
+      category: String(product.category || 'Collares').trim(),
+      desc: String(product.desc || '').trim(),
+      material: String(product.material || 'Chapa de oro 14k').trim(),
+      tag: String(product.tag || 'Nuevo').trim(),
+      img: String(mainImg),
+      images: cleanedImages,
+      updatedAt: Date.now(),
+    };
+
+    if (typeof product.price === 'number' && !isNaN(product.price) && product.price > 0) {
+      cleanedPayload.price = product.price;
+    } else {
+      cleanedPayload.price = null;
+    }
+
+    await setDoc(docRef, cleanedPayload, { merge: true });
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, `${PRODUCTS_COLLECTION}/${product.id}`);
+    console.error('Error saving product to Firestore:', error);
     throw error;
   }
 }
@@ -118,13 +167,13 @@ export async function deleteProductFromCloud(productId: number): Promise<void> {
     const docRef = doc(db, PRODUCTS_COLLECTION, String(productId));
     await deleteDoc(docRef);
   } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, `${PRODUCTS_COLLECTION}/${productId}`);
+    console.error('Error deleting product from Firestore:', error);
     throw error;
   }
 }
 
 /**
- * Resets Firestore catalog back to initial defaults.
+ * Resets Firestore catalog back to initial defaults with multiple images.
  */
 export async function resetCloudProductsToDefaults(defaultProducts: Product[]): Promise<void> {
   try {
@@ -133,10 +182,29 @@ export async function resetCloudProductsToDefaults(defaultProducts: Product[]): 
       await deleteDoc(doc(db, PRODUCTS_COLLECTION, d.id));
     }
     for (const item of defaultProducts) {
-      await setDoc(doc(db, PRODUCTS_COLLECTION, String(item.id)), item);
+      const fallbackImages =
+        Array.isArray(item.images) && item.images.length > 0
+          ? item.images
+          : item.img
+          ? [item.img]
+          : [];
+
+      const cleanedItem: Record<string, any> = {
+        id: Number(item.id),
+        name: (item.name || '').trim(),
+        category: (item.category || 'Collares').trim(),
+        desc: (item.desc || '').trim(),
+        material: (item.material || 'Chapa de oro 14k').trim(),
+        tag: (item.tag || 'Nuevo').trim(),
+        img: item.img || fallbackImages[0] || '',
+        images: fallbackImages,
+        price: typeof item.price === 'number' && item.price > 0 ? item.price : null,
+        updatedAt: Date.now(),
+      };
+      await setDoc(doc(db, PRODUCTS_COLLECTION, String(item.id)), cleanedItem);
     }
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, PRODUCTS_COLLECTION);
+    console.error('Error resetting products in Firestore:', error);
     throw error;
   }
 }

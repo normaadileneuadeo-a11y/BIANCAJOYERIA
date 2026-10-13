@@ -20,10 +20,10 @@ export async function applyWatermarkToImage(fileOrUrl: File | string): Promise<s
         return;
       }
 
-      // Max size normalization to keep storage efficient in localStorage
+      // Max size normalization to keep storage efficient and crisp
       let width = img.width;
       let height = img.height;
-      const MAX_DIM = 1000;
+      const MAX_DIM = 850;
       if (width > MAX_DIM || height > MAX_DIM) {
         if (width > height) {
           height = Math.round((height * MAX_DIM) / width);
@@ -103,7 +103,7 @@ export async function applyWatermarkToImage(fileOrUrl: File | string): Promise<s
       ctx.restore();
 
       // Return high-quality compressed JPEG
-      resolve(canvas.toDataURL('image/jpeg', 0.86));
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
     };
 
     img.onerror = (err) => reject(err);
